@@ -1,0 +1,81 @@
+#!/bin/bash
+# ============================================================================
+# SMOKE — untrained DR-Tulu (flat ReAct) short-form, THINKING-ON, N=4 simpleqa.
+# Gate for the full run: subset loads, bm25s frozen-corpus retrieval executes,
+# final_response non-empty. Mirrors eval_drtulu_thinkon_full.job (the 0.268 anchor
+# harness) — DR-Tulu's OWN native config (max_tool_calls=12, docs=10, parser mode,
+# no browse), only the dataset swapped to our coverage-safe subset. GEN ONLY.
+# ============================================================================
+#SBATCH --job-name=drtulu_sf_smoke
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:30:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_sf_smoke_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_sf_smoke_%j.err
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+MODEL=Qwen/Qwen3.5-4B; PORT=8009
+FROZEN=$DRRLM/data/frozen_corpus; OUT=$DRRLM/runs/drtulu_sf_smoke; TASK=simpleqa; N=4
+mkdir -p "$OUT" "$DRRLM/runs/logs"
+source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
+export SIMPLEQA_LOCAL_PATH=$DRRLM/data/subsets/simpleqa_eval120.jsonl
+export TWOWIKI_LOCAL_PATH=$DRRLM/data/subsets/2wiki_eval120.jsonl
+export WEBWALKER_LOCAL_PATH=$DRRLM/data/subsets/webwalker_eval120.jsonl
+
+CUR_PID=""; cleanup(){ [ -n "$CUR_PID" ] && kill "$CUR_PID" 2>/dev/null || true; }; trap cleanup EXIT
+serve(){
+  local log="$DRRLM/runs/logs/drtulu_sf_smoke_vllm_${SLURM_JOB_ID:-local}.log"
+  echo "[serve] vllm $MODEL enable_thinking=true -> $log"
+  vllm serve "$MODEL" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.85 --max-model-len 32768 --enforce-eager \
+    --default-chat-template-kwargs '{"enable_thinking": true}' \
+    --served-model-name "$MODEL" > "$log" 2>&1 &
+  CUR_PID=$!
+  for s in $(seq 1 200); do
+    curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve] ready ~$((s*5))s"; return 0; }
+    sleep 5; kill -0 "$CUR_PID" 2>/dev/null || { echo "[FATAL] vllm died"; tail -40 "$log"; exit 1; }
+  done; echo "[FATAL] vllm never ready"; exit 1
+}
+
+serve
+OV="search_tool_name=bm25s,browse_tool_name=bm25s"
+OV="$OV,bm25s_index_path=$FROZEN/bm25s_index,bm25s_corpus_path=$FROZEN/corpus.jsonl"
+OV="$OV,search_agent_base_url=http://localhost:$PORT/v1"
+OV="$OV,search_agent_model_name=$MODEL,search_agent_tokenizer_name=$MODEL"
+OV="$OV,search_agent_temperature=1.0,search_agent_max_tokens=8192"
+OV="$OV,search_agent_max_tool_calls=12,number_documents_to_search=10"
+OV="$OV,tool_calling_mode=parser,use_browse_agent=false"
+cd "$AGENT"; rm -f "$OUT/${TASK}.jsonl"
+echo "[gen] DR-Tulu ReAct THINKING-ON smoke $TASK N=$N ..."
+python "workflows/auto_search_sft.py" generate-dataset "$TASK" \
+  --num-examples "$N" --max-concurrent 4 --batch-size 4 --use-cache \
+  --config "workflows/auto_search_sft.yaml" --config-overrides "$OV" \
+  --output "$OUT/${TASK}.jsonl" < /dev/null 2>&1 | tail -20
+
+echo; echo "===== SMOKE GATES ====="
+python - "$OUT/${TASK}.jsonl" <<'PY'
+import json,sys,os
+p=sys.argv[1]
+if not os.path.exists(p) or os.path.getsize(p)==0:
+    print("FAIL: no output rows"); sys.exit(2)
+rows=[json.loads(l) for l in open(p) if l.strip()]
+def walk(o):
+    if isinstance(o,dict):
+        for k,v in o.items(): yield (k,v); yield from walk(v)
+    elif isinstance(o,list):
+        for v in o: yield from walk(v)
+ne=[r for r in rows if (r.get("final_response") or "").strip()]
+searched=0
+for r in rows:
+    ex=sum(v for k,v in walk(r.get("full_traces") or {}) if k=="tool_call_count" and isinstance(v,int))
+    searched += ex>0
+print(f"rows={len(rows)}/4  non-empty={len(ne)}/{len(rows)}  retrieval-executed={searched}/{len(rows)}")
+for r in rows: print(f"  - {str(r.get('example_id'))[:8]} ans={(r.get('final_response') or '').strip().replace(chr(10),' ')[:90]!r}")
+ok=len(rows)>=3 and len(ne)>=1 and searched>=1
+print("VERDICT:", "PASS -> full run OK" if ok else "FAIL -> investigate")
+sys.exit(0 if ok else 2)
+PY
+echo "[done] $OUT/${TASK}.jsonl"

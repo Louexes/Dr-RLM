@@ -1,0 +1,69 @@
+#!/bin/bash
+# Predictive-entropy per epoch checkpoint (+ base) for the FLAT arm — the RL-stability guard
+# in the recursive arm's selection rule. H = -Σ p log p over next-token dist, averaged over
+# unmasked (assistant) positions, on flat multiturn rows (40 train + all 13 held-out).
+# Lower H = more peaked / less exploratory init. Mirrors sweep_entropy.job (recursive).
+#SBATCH --job-name=sweep_ent_flat
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
+#SBATCH --time=00:35:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sweep_entropy_drtulu_flat_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sweep_entropy_drtulu_flat_%j.out
+set -euo pipefail
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export HF_HOME=/scratch-shared/lgehringer/hf_cache HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false
+env -u VIRTUAL_ENV rl/skyrl/.venv/bin/python - <<'PY'
+import json, random, torch, sys, statistics as st
+sys.path.insert(0,"rl/skyrl"); sys.path.insert(0,"scripts")
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from skyrl.train.sft_trainer import tokenize_chat_example
+from skyrl.train.config.sft_config import TrainOnWhat
+from flat_to_multiturn import reconvert
+random.seed(42)
+
+# train = primary multiturn (40 sampled); held-out = ablation-full multiturn ∖ primary (all 13)
+train=[json.loads(l) for l in open("data/sft/primary/dr_tulu_flat_primary_multiturn.jsonl")]
+prim_q={r["_qid"] for r in train}
+full=[reconvert(json.loads(l)) for l in open("data/sft/ablation/dr_tulu_flat_full.jsonl")]
+held=[r for r in full if r and r["_qid"] not in prim_q]
+random.shuffle(train); train_s=train[:40]; held_s=held
+print(f"[entropy] train sample={len(train_s)}  held-out={len(held_s)}")
+
+tok=AutoTokenizer.from_pretrained("Qwen/Qwen3.5-4B")
+def mean_entropy(model,rows):
+    hs=[]
+    for r in rows:
+        o=tokenize_chat_example({"conversations":r["conversations"]},tok,max_length=32768,
+            messages_key="conversations",train_on_what=TrainOnWhat.ALL_ASSISTANT_MESSAGES)
+        ids,lm,na=o["input_ids"],o["loss_mask"],o["num_actions"]
+        if sum(lm)==0: continue
+        f=torch.zeros(len(ids)); f[-na:]=torch.tensor(lm,dtype=torch.float32)
+        pos=[t for t in range(len(ids)-1) if f[t+1]>0]
+        if not pos: continue
+        x=torch.tensor([ids],device="cuda")
+        with torch.no_grad():
+            logits=model(x).logits[0]
+            sel=logits[torch.tensor(pos,device="cuda")].float()
+            logp=torch.log_softmax(sel,dim=-1)
+            ent=-(logp.exp()*logp).sum(-1)
+        hs.append(ent.mean().item())
+    return st.mean(hs)
+
+print("=== FLAT SFT ENTROPY (RL-stability). ref rule: STABLE >=70% of base, RISK 58-70%, COLLAPSE <58% ===")
+print(f"{'model':8}{'heldH':>8}{'%base':>8}{'trainH':>8}  flag")
+base=AutoModelForCausalLM.from_pretrained("Qwen/Qwen3.5-4B",dtype=torch.bfloat16,device_map="cuda").eval()
+BASE=mean_entropy(base,held_s); BASE_TR=mean_entropy(base,train_s)
+print(f"{'base':8}{BASE:>8.3f}{'100%':>8}{BASE_TR:>8.3f}")
+del base; torch.cuda.empty_cache()
+for step,ep in [(13,1),(26,2),(39,3),(52,4)]:
+    p=f"/scratch-shared/lgehringer/ckpts/dr_tulu_flat_sft_lowlr/hf/global_step_{step}/policy"
+    m=AutoModelForCausalLM.from_pretrained(p,dtype=torch.bfloat16,device_map="cuda").eval()
+    hh=mean_entropy(m,held_s); ht=mean_entropy(m,train_s); pct=100*hh/BASE
+    flag="STABLE" if pct>=70 else ("RISK" if pct>=58 else "COLLAPSE")
+    print(f"{str(ep)+'ep':8}{hh:>8.3f}{pct:>7.0f}%{ht:>8.3f}  {flag}")
+    del m; torch.cuda.empty_cache()
+print("\n[pick] entropy-STABLE (>=70%) AND benchmark-strong (gate) = the flat RL init, mirroring B_e68")
+PY
+echo "[entropy] done"

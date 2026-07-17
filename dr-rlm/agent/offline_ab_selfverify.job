@@ -1,0 +1,48 @@
+#!/bin/bash
+# SLURM job — OFFLINE A/B: AGENT-SIDE citation self-verification (DRB n=16, single arm).
+# Louis's fairness call (2026-06-12): the harness-side verify_citations pass is architecture-
+# agnostic (DR-Tulu could bolt it on), so it confounds head-to-heads. This arm instead PROMPTS
+# each node to batch-verify its own (claim, snippet) pairs via llm_query_batched at finalize —
+# organic agent behavior inside its own budget, visible in trajectories, RL-reinforceable.
+# Compare against the two existing offline_ab_citeverify arms (same corpus, same n):
+#   control  (no verification):      valid_rate 0.407, valid cites/article 4.58, RACE 0.352
+#   harness verify (upper bound):    valid_rate 0.870, valid cites/article 4.44, RACE flat
+# Read: valid_rate (how much of the gap recovered), valid cites/article (over-pruning?),
+# RACE (scaffolding tax / ungrounded llm_query leakage), compliance (finalize-stage
+# llm_query_batched calls in trajectories).
+#SBATCH --job-name=offline_ab_selfverify
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=04:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_selfverify_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_selfverify_%j.err
+set -euo pipefail
+
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+BASE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_ab_selfverify
+
+export ARMS=structured
+export DR_RLM_CAPTURE_LEDGER=1
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export TOKENIZER=Qwen/Qwen3-8B
+export BENCH=deep_research_bench
+export NUMEX=16
+export MAX_DEPTH=1
+export SEARCH_BACKEND=local_jsonl
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/drb.jsonl
+export MAX_TOOL_CALLS=200
+export MAX_CHILDREN=6
+export GRADE=1
+export SAVE_TRAJ=1
+
+# The treatment: variant prompt, harness verification OFF (measuring the prompted pass alone).
+export DR_RLM_PROMPT_FILE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/prompts/variants/self_verify.txt
+export CITATION_VERIFY=0
+export OUT=$BASE/selfverify
+
+echo "[ab] arm SELF-VERIFY (prompted, harness verify off) ..."
+./ab_child_return.sh || echo "[warn] selfverify arm failed"
+echo "[offline_ab_selfverify] done -> $BASE"

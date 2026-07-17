@@ -1,0 +1,41 @@
+#!/bin/bash
+# SLURM-resident Gemini quota poller — today's campaign exhausted the per-day request quota
+# (resets ~09:00 CEST). Polls a 5-token completion every 15 min; on first success it DELETES
+# the quota-poisoned runs/offline_ab_bounce (partial rows would be skipped as "done" by the
+# ab script's resume logic, silently keeping bad data) and resubmits offline_ab_bounce.job.
+# Mirrors agent/jina_poller.job (SLURM-resident because session monitors die on compaction).
+#SBATCH --job-name=gemini_poller
+#SBATCH --partition=rome
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --time=24:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/gemini_poller_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/gemini_poller_%j.err
+set -uo pipefail
+
+KEYS=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/keys.sh
+JOB=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent/offline_ab_bounce.job
+POISONED=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_ab_bounce
+
+others=$(squeue -u "$USER" -h -n gemini_poller -t RUNNING -o %i | grep -v "^${SLURM_JOB_ID}$" | wc -l)
+if (( others > 0 )); then echo "$(date -Is) another gemini_poller running — exiting"; exit 0; fi
+
+while true; do
+  source "$KEYS" >/dev/null 2>&1 || true
+  resp=$(curl -s -m 20 -X POST \
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" \
+    -H "Authorization: Bearer ${GEMINI_API_KEY:-}" -H "Content-Type: application/json" \
+    -d '{"model":"gemini-2.5-flash","messages":[{"role":"user","content":"say ok"}],"max_tokens":5}' || true)
+  if [[ -n "$resp" && "$resp" != *'"code": 429'* && "$resp" != *'"code":429'* && "$resp" == *'"content"'* ]]; then
+    echo "$(date -Is) GEMINI QUOTA RECOVERED: ${resp:0:120}"
+    if squeue -u "$USER" -h -o %j | grep -q '^offline_ab_bounce$'; then
+      echo "$(date -Is) bounce job already queued — not double-submitting"; exit 0
+    fi
+    rm -rf "$POISONED"
+    out=$(cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent && sbatch "$JOB" 2>&1); rc=$?
+    echo "$(date -Is) cleaned poisoned run; sbatch offline_ab_bounce (rc=$rc): $out"
+    exit $rc
+  fi
+  echo "$(date -Is) gemini still quota-blocked (${resp:0:80})"
+  sleep 900
+done

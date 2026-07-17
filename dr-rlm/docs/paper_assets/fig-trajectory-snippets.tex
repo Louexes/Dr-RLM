@@ -1,0 +1,60 @@
+% ============================================================================
+% RAW-TRAJECTORY SNIPPETS (PLACEHOLDER) -- literal before/after model output.
+% Verbatim sub-agent text from instance 27 ("conditions for life on Earth"),
+% first vs. last rollout of the v1-clean provenance-smoke RL run. Whitespace
+% normalized; [...] marks elision; otherwise VERBATIM. Cited spans are the model's
+% own <cite id="...">...</cite> tags, rendered in the provenance colour.
+% Source: runs/provenance_smoke/credit_metrics_L3_v1clean.jsonl
+% (analysis/training_delta_examples.py --dump-snippets 27).
+%
+% >>> PLACEHOLDER: regenerate from the FINAL SFT+RL checkpoint before submission. <<<
+%
+% Needs \usepackage{tikz} + \usetikzlibrary{arrows.meta} (loaded). The \definecolor
+% lines are no-ops if cI/cII/cIII/cBad already exist. \cit renders a grounded claim.
+% ============================================================================
+\definecolor{cI}{HTML}{1F6FB2}\definecolor{cII}{HTML}{1B8A6B}%
+\definecolor{cIII}{HTML}{C97A12}\definecolor{cBad}{HTML}{B03A2E}%
+% grounded claim: cited text + provenance id. #1 = snippet id, #2 = claim text.
+\providecommand{\cit}[2]{\textcolor{cIII}{#2}\,\raisebox{0.3ex}{\scriptsize\textcolor{cIII!85!black}{[\texttt{#1}]}}}
+% a boxed trajectory panel. #1 = border colour, #2 = header, #3 = body.
+% \providecommand so this and fig-trajectory-snippets-root.tex can coexist in one document.
+\providecommand{\trajbox}[3]{%
+  \begin{tikzpicture}
+  \node[draw=#1,line width=0.9pt,rounded corners=3pt,fill=#1!4,
+        inner sep=6pt,text width=0.93\columnwidth,align=left,font=\small] (b){#3};
+  \node[fill=#1,text=white,font=\scriptsize\bfseries,inner sep=2pt,rounded corners=1pt,
+        anchor=west] at ([xshift=6pt,yshift=-0.2pt]b.north west){#2};
+  \end{tikzpicture}}
+
+\begin{figure}[t]
+\centering
+\trajbox{cBad}{BEFORE \textnormal{\scriptsize(start of training)}}{%
+\textit{Sub-agent, ``conditions for life'':}\\[2pt]
+``Yes, the conditions necessary for life exist on Earth. [\,\ldots\,] the fundamental
+requirements for life include liquid water, a suitable atmosphere with protection against
+radiation, a stable temperature range, and chemical energy sources. Earth currently possesses
+all these conditions [\,\ldots\,]''\\[3pt]
+{\scriptsize\textcolor{cBad}{$\rightarrow$ \textbf{0 citations} -- claims asserted, none grounded;
+2 of 4 sub-agents returned empty.}}}
+
+\vspace{4pt}
+
+\trajbox{cII}{AFTER \textnormal{\scriptsize(end of training)}}{%
+\textit{Sub-agents, same sub-questions:}\\[2pt]
+``[\,\ldots\,] the major macromolecules of the cell are composed almost entirely of these six
+elements. \cit{00914e7d-15}{The major macromolecules of the cell account for the bulk of life's
+mass and are composed almost entirely of six elements (C,H,N,O,P, and S).}''\\[3pt]
+``\cit{71e5f199-24}{Water is the liquid that makes life on Earth possible. As water cycles from the
+air to the land to the sea and back again, water shapes our planet.}''\\[3pt]
+``[\,\ldots\,] not too hot and not too cold for liquid water.
+\cit{cb3f381a-8}{the habitable zone is the region around a star where conditions are ``just right''
+for liquid water to exist on a planet's surface.}''\\[3pt]
+{\scriptsize\textcolor{cII!75!black}{$\rightarrow$ \textbf{every claim grounded} in the sub-agent's
+own retrieved evidence; the \texttt{id} prefix names the agent that surfaced it.}}}
+
+\caption{\textbf{Raw output before vs.\ after training (placeholder, v1-clean smoke run).}
+Same prompt, verbatim model text from the first vs.\ last rollout. Training turns confident but
+ungrounded assertions into the same claims \emph{grounded} in retrieved evidence via the model's own
+\texttt{<cite id>} tags (\textcolor{cIII}{orange}). \textit{Final version uses the SFT$+$RL checkpoint.}}
+\label{fig:trajectory-snippets}
+\end{figure}

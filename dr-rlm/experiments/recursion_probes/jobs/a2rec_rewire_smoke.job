@@ -1,0 +1,28 @@
+#!/bin/bash
+#SBATCH --job-name=w1_rewire_smoke
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
+#SBATCH --time=00:30:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/rewire_smoke_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/rewire_smoke_%j.err
+# Validate the single-prompt rewire end-to-end: driver loads rlm_system_prompt.txt as
+# custom_system_prompt (orchestrator=False), recursion still works. 2 items, gemini-2.5-flash.
+set -euo pipefail
+export ARM=rewire_smoke
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/rewire_smoke
+export BENCH=sqav2
+export MCP_PORT=8062
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export MAX_DEPTH=2
+export ORCHESTRATOR=true
+export TOOL_BUDGET_SCOPE=node
+export MAX_TOOL_CALLS=10
+export ITEM_TIMEOUT=600
+export NUM_SHARDS=1
+export NUMEX=2
+export GRADE=0
+export SQAV2_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/drrlm/data/subsets/sqav2_gemini_recprobe12.jsonl
+bash /gpfs/home5/lgehringer/Dr-RLM/drrlm/agent/run.sh

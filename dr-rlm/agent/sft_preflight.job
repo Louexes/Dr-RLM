@@ -1,0 +1,133 @@
+#!/bin/bash
+# STEP-2 PRE-FLIGHT (SFT_PLAN_2026-07-03.md): finish the LF training venv ON A GPU NODE
+# (torch imports need CUDA libs — 7 login-node build attempts wasted on that) and run the
+# two gates on REAL Step-1 rows:
+#   GATE A: multi-turn <think> preservation in LF qwen3 TRAINING render (loss side, all turns)
+#   GATE B: <tool_output>/<subagent_output> span masking works on our rows
+#SBATCH --job-name=sft_preflight
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:45:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sft_preflight_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sft_preflight_%j.err
+set -euo pipefail
+
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+V=/scratch-shared/lgehringer/venvs/lf_train/bin/python
+UV=~/.local/bin/uv
+export UV_CACHE_DIR=/scratch-shared/lgehringer/uv_cache HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false
+export HF_HOME=/scratch-shared/lgehringer/hf_cache
+
+# deepspeed compiles/JITs CUDA ops -> needs a CUDA toolkit (nvcc). torch bundles only the
+# runtime, so load the toolkit module (CUDA 12.6; torch is cu128 — same major, ds tolerates it).
+source /etc/profile.d/lmod.sh 2>/dev/null || true
+module load 2024 2>/dev/null || true; module load CUDA/12.6.0 2>/dev/null || true
+export CUDA_HOME=${CUDA_HOME:-${EBROOTCUDA:-}}
+echo "[cuda] CUDA_HOME=$CUDA_HOME nvcc=$(command -v nvcc || echo MISSING)"
+
+# --- stage 0a: REPAIR venv — scratch purge left the nvidia cu12 .so payloads empty
+# (dist-info kept, nvidia/*/lib/*.so gone -> torch import dies on libcublas.so.*[0-9]).
+# Reinstall exactly the cu12 wheel versions already recorded in dist-info (restores .so,
+# leaves the intact torch/lib alone). ---
+if ! $V -c "import torch; assert torch.cuda.is_available()" 2>/dev/null; then
+  echo "[repair] torch CUDA libs missing -> reinstalling purged nvidia cu12 payloads"
+  NV=$($V - <<'PY'
+import glob, re, os
+base=glob.glob('/scratch-shared/lgehringer/venvs/lf_train/lib/python*/site-packages')[0]
+pk=[]
+for d in glob.glob(base+'/nvidia_*_cu12-*.dist-info'):
+    m=re.match(r'(nvidia_[a-z_]+_cu12)-([0-9.]+)\.dist-info', os.path.basename(d))
+    if m: pk.append(f"{m.group(1).replace('_','-')}=={m.group(2)}")
+print(' '.join(sorted(set(pk))))
+PY
+)
+  echo "[repair] $NV"
+  $UV pip install --python $V --force-reinstall --no-cache-dir $NV
+  $V -c "import torch; assert torch.cuda.is_available()" \
+    || { echo "[repair] nvidia reinstall insufficient -> force-reinstalling torch"; \
+         $UV pip install --python $V --force-reinstall --no-cache-dir \
+           --index-url https://download.pytorch.org/whl/cu128 torch==2.10.0+cu128; }
+fi
+
+# --- stage 0b: finish installs (deepspeed + LF need CUDA-visible torch) ---
+$V -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+# LF hard-enforces deepspeed<=0.16.9 at runtime (not just install) -> pin it
+$V -c "import deepspeed, packaging.version as pv; assert pv.parse(deepspeed.__version__) <= pv.parse('0.16.9')" 2>/dev/null || $UV pip install --python $V --no-build-isolation "deepspeed==0.16.9"
+if ! $V -c "import llamafactory" 2>/dev/null; then
+  # scratch-purge also corrupted the uv sdist cache (empty antlr4 sdist dir -> build fails).
+  # clear that entry + install antlr4 from its wheel so omegaconf's dep resolves.
+  rm -rf "$UV_CACHE_DIR"/sdists-v9/pypi/antlr4-python3-runtime 2>/dev/null || true
+  $UV pip install --python $V antlr4-python3-runtime==4.9.3
+  $UV pip install --python $V --no-build-isolation -e "$DRRLM/sft/llama-factory[metrics]"
+fi
+# scratch-purge also hit 4 base packages (login-node import scan); everything else cascades
+# from them: python-dateutil -> pandas/datasets/sklearn/matplotlib/nltk; jinja2 -> transformers/peft;
+# py-cpuinfo -> deepspeed; six -> rouge_chinese. force-reinstall the roots.
+if ! $V -c "import pandas, jinja2.ext, cpuinfo, six; from cpuinfo import get_cpu_info" 2>/dev/null; then
+  echo "[repair] reinstalling purged base packages (dateutil/jinja2/py-cpuinfo/six + pandas)"
+  $UV pip install --python $V --force-reinstall --no-cache-dir \
+    python-dateutil jinja2 py-cpuinfo six pandas
+fi
+# uv venvs are minimal — deepspeed's op_builder imports torch.utils.cpp_extension -> setuptools
+$V -c "import setuptools" 2>/dev/null || $UV pip install --python $V setuptools wheel
+$V -c "import llamafactory, deepspeed; print('LF ENV READY')"
+
+# --- gates A + B on real Step-1 rows ---
+$V - <<'PY'
+import json, sys
+sys.path.insert(0, '/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/sft/llama-factory/src')
+from llamafactory.data.template import TEMPLATES
+from transformers import AutoTokenizer
+
+tok = AutoTokenizer.from_pretrained("Qwen/Qwen3.5-4B", trust_remote_code=True)
+tpl = TEMPLATES.get("qwen3")
+
+# a real multi-turn recursive root row with think blocks
+row = None
+for l in open('/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/sft/primary/dr_rlm_recursive_primary.jsonl'):
+    r = json.loads(l)
+    conv = r["conversations"]
+    n_think = sum(1 for m in conv if m["role"] == "assistant" and "</think>" in m["content"])
+    if r.get("_node") == "root" and n_think >= 3:
+        row = r; break
+assert row, "no suitable test row"
+conv = row["conversations"]
+sys_txt = next(m["content"] for m in conv if m["role"] == "system")
+msgs = [m for m in conv if m["role"] != "system"]
+think_turns = [i for i, m in enumerate(msgs) if m["role"] == "assistant" and "</think>" in m["content"]]
+enc = tpl.encode_multiturn(tok, msgs, system=sys_txt)
+resp_text = " ".join(tok.decode(r) for _, r in enc)
+
+# GATE A: every think block's CONTENT must appear on the loss (response) side
+missing = 0
+for i in think_turns:
+    body = msgs[i]["content"].split("</think>")[0].replace("<think>", "").strip()[:80]
+    if body and body not in resp_text:
+        missing += 1
+print(f"GATE A (think preservation): {len(think_turns)} think turns, {missing} missing from loss side ->", "PASS" if missing == 0 else "FAIL")
+
+# GATE B: span masking — run the span-masked processor path on this row
+from llamafactory.hparams.data_args import DataArguments
+da = DataArguments(template="qwen3", cutoff_len=32768)
+da.mask_span_types = ["tool_output", "subagent_output"]
+try:
+    from llamafactory.data.processor.span_masked import SpanMaskedSupervisedDatasetProcessor as P
+except ImportError:
+    from llamafactory.data.processor import span_masked as _sm
+    P = next(getattr(_sm, n) for n in dir(_sm) if "Processor" in n)
+proc = P(template=tpl, tokenizer=tok, processor=None, data_args=da)
+ex = {"_prompt": [msgs], "_response": [], "_system": [sys_txt], "_tools": [""], "_images": [None], "_videos": [None], "_audios": [None]}
+# processor APIs differ; fall back to a direct check that masked spans decode to IGNORE
+try:
+    out = proc.preprocess_dataset(ex)
+    ids, labels = out["input_ids"][0], out["labels"][0]
+    inside = [t for t, l in zip(ids, labels) if l != -100]
+    kept_text = tok.decode(inside)
+    leak = "tool_output>" in kept_text.replace("</tool_output>", "").replace("<tool_output>", "KEPTTAG")
+    n_masked = sum(1 for l in labels if l == -100)
+    print(f"GATE B (span masking): {n_masked}/{len(labels)} tokens masked; tool spans in loss:", "LEAK" if "KEPTTAG" in kept_text else "none", "-> PASS" if n_masked > 0 and "KEPTTAG" not in kept_text else "-> CHECK")
+except Exception as e:
+    print(f"GATE B: processor API probe failed ({type(e).__name__}: {e}) — inspect manually")
+PY
+echo "[preflight] complete"

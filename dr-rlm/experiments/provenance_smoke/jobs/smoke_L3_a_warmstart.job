@@ -1,0 +1,98 @@
+#!/bin/bash
+# =============================================================================
+# (a) WARM-START PHASE 2 — does a trained root MAINTAIN established citing?
+#
+# Probe 24193291 showed cold-start full_R can't bootstrap citing (orphans flat 94%):
+# at init only ~6% of children cite, so the dense root gradient drowns the sparse child
+# signal. (c) child-shaping nudged it but too weakly (10% attrib @ step10). The cold-start
+# sparsity is the binding constraint.
+#
+# (a) sidesteps it: WARM-START from the v1-clean step-24 checkpoint, where credit_share
+# already taught citing (orphans 47%, cites/kid 1.51 — DENSE, non-degenerate child cohorts).
+# Then switch the root to full_R (+ rer_pernode + grounding-aware R) and ask: does the now-
+# trained root LIFT R while citing HOLDS (orphans stay low), or does full_R EXTINGUISH the
+# established citing (orphans creep back toward 90%)?
+#
+# This is IDENTICAL to probe 24193291 EXCEPT resume_mode=from_path (the only change), so it
+# cleanly isolates the warm-start. NO child-shaping (clean test of warm-start alone).
+#   SUCCESS = orphans stay low (<=~55%) + cites/kid stays high (>=~1.0) + R rises/holds.
+#   FAILURE = orphans climb back toward ~90% => full_R extinguishes citing => need shaping/residual.
+# resume_path is READ-ONLY; new ckpts go to a SEPARATE dir (v1-clean ckpt preserved).
+# Record: docs/RL_TRAINING_LOG.md.
+# =============================================================================
+#SBATCH --job-name=smoke_L3_a_warmstart
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=4
+#SBATCH --cpus-per-task=64
+#SBATCH --time=06:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/smoke_L3_a_warmstart_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/smoke_L3_a_warmstart_%j.err
+set -euo pipefail
+
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+SKYRL=$DRRLM/rl/skyrl
+OUT=$DRRLM/runs/provenance_smoke
+mkdir -p "$OUT"
+export PATH="$HOME/.local/bin:$PATH"
+set +x; source "$DRRLM/keys.sh"; set -x
+export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt.txt
+
+export VLLM_USE_DEEP_GEMM=0
+export HF_HUB_OFFLINE=1
+export UV_CACHE_DIR=/scratch-shared/lgehringer/uv_cache
+export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticators('api.wandb.ai')[2])")
+
+# ---- held-constant judge: gemini-2.5-flash ----
+export JUDGE_API_KEY="$GEMINI_API_KEY"
+export JUDGE_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+export JUDGE_MODEL="gemini-2.5-flash"
+
+# ---- data / corpus / policy (MUST match v1-clean: Qwen3.5-4B, world_size_4 shards) ----
+export DATA_DIR=$DRRLM/data/poc_corpus
+export MODEL_PATH="Qwen/Qwen3.5-4B"
+export SEARCH_BACKEND=local_jsonl
+export SEARCH_CORPUS_PATH=$DATA_DIR/corpus.jsonl
+export NUM_ENGINES=1 TP_SIZE=4 TRAIN_GPUS=4
+export LOGGER=console
+
+# ---- evidence telemetry (orphan% NOT contaminated here — no shaping) ----
+export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_a_warmstart.jsonl"
+export DR_RLM_JUDGE_OUTAGE_GUARD=0.9
+
+# ---- GROUNDING-AWARE REWARD (root gets full_R = rubric+citation blend) ----
+export DR_RLM_CITATION_REWARD=1
+export DR_RLM_RUBRIC_WEIGHT=0.5
+export DR_RLM_CITATION_WEIGHT=0.2
+
+cd "$SKYRL"
+bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
+  generator.share_mode=ledger_support \
+  generator.root_reward_mode=full_R \
+  trainer.algorithm.advantage_estimator=rer_pernode \
+  generator.judge_max_concurrency=8 \
+  generator.max_recursion_depth=1 \
+  generator.max_children_per_node=4 \
+  generator.child_return_mode=structured \
+  generator.max_turns=10 \
+  generator.n_samples_per_prompt=4 \
+  generator.chat_template_kwargs.enable_thinking=false \
+  generator.sampling_params.max_generate_length=4096 \
+  generator.eval_sampling_params.max_generate_length=4096 \
+  trainer.policy.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
+  trainer.ref.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
+  trainer.resume_mode=from_path \
+  trainer.resume_path=/scratch-shared/lgehringer/smoke_v1clean_ckpts/global_step_24 \
+  trainer.epochs=5 \
+  trainer.eval_before_train=false \
+  trainer.eval_interval=1000 \
+  trainer.ckpt_interval=5 \
+  trainer.max_ckpts_to_keep=2 \
+  trainer.micro_forward_batch_size_per_gpu=1 \
+  trainer.micro_train_batch_size_per_gpu=1 \
+  trainer.logger="['console','wandb']" \
+  trainer.run_name="smoke_L3_a_warmstart" \
+  trainer.log_path="$OUT/a_warmstart_logs" \
+  trainer.ckpt_path="/scratch-shared/lgehringer/a_warmstart_ckpts" \
+  trainer.export_path="/scratch-shared/lgehringer/a_warmstart_exports"
+
+echo "[smoke_L3_a_warmstart] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"

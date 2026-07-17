@@ -1,0 +1,399 @@
+{
+  "L3": {
+    "n_rows": 480,
+    "n_buckets": 30,
+    "buckets": [
+      {
+        "n_trees": 16,
+        "n_children": 46,
+        "recursion_rate": 0.75,
+        "frac_children_cite0": 0.9565217391304348,
+        "mean_cites_per_child": 0.13043478260869565,
+        "frac_children_credit0": 0.9782608695652174,
+        "mean_within_tree_ra_std": 0.024056261216234404,
+        "mean_report_reward": 0.5208333333333334,
+        "frac_R_positive": 0.5625,
+        "mean_abs_conservation_gap": 0.4166666666666667
+      },
+      {
+        "n_trees": 16,
+        "n_children": 60,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.9166666666666666,
+        "mean_cites_per_child": 0.23333333333333334,
+        "frac_children_credit0": 0.95,
+        "mean_within_tree_ra_std": 0.030446205601796672,
+        "mean_report_reward": 0.4296875,
+        "frac_R_positive": 0.6875,
+        "mean_abs_conservation_gap": 0.3125
+      },
+      {
+        "n_trees": 16,
+        "n_children": 57,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.8421052631578947,
+        "mean_cites_per_child": 0.49122807017543857,
+        "frac_children_credit0": 0.9298245614035088,
+        "mean_within_tree_ra_std": 0.042120821905443244,
+        "mean_report_reward": 0.4692708333333333,
+        "frac_R_positive": 0.875,
+        "mean_abs_conservation_gap": 0.2333333333333333
+      },
+      {
+        "n_trees": 16,
+        "n_children": 49,
+        "recursion_rate": 0.875,
+        "frac_children_cite0": 0.9591836734693877,
+        "mean_cites_per_child": 0.10204081632653061,
+        "frac_children_credit0": 0.9591836734693877,
+        "mean_within_tree_ra_std": 0.024056261216234408,
+        "mean_report_reward": 0.8458333333333333,
+        "frac_R_positive": 0.9375,
+        "mean_abs_conservation_gap": 0.5333333333333333
+      },
+      {
+        "n_trees": 16,
+        "n_children": 58,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.8620689655172413,
+        "mean_cites_per_child": 0.3448275862068966,
+        "frac_children_credit0": 0.9137931034482759,
+        "mean_within_tree_ra_std": 0.045706896310845374,
+        "mean_report_reward": 0.6875,
+        "frac_R_positive": 1.0,
+        "mean_abs_conservation_gap": 0.3385416666666667
+      },
+      {
+        "n_trees": 16,
+        "n_children": 55,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.8909090909090909,
+        "mean_cites_per_child": 0.2545454545454545,
+        "frac_children_credit0": 0.9090909090909091,
+        "mean_within_tree_ra_std": 0.024196302731805605,
+        "mean_report_reward": 0.6760416666666667,
+        "frac_R_positive": 0.9375,
+        "mean_abs_conservation_gap": 0.49375
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.859375,
+        "mean_cites_per_child": 0.265625,
+        "frac_children_credit0": 0.890625,
+        "mean_within_tree_ra_std": 0.0524727197779113,
+        "mean_report_reward": 0.5875,
+        "frac_R_positive": 0.8125,
+        "mean_abs_conservation_gap": 0.3671875
+      },
+      {
+        "n_trees": 16,
+        "n_children": 54,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.7407407407407407,
+        "mean_cites_per_child": 0.6481481481481481,
+        "frac_children_credit0": 0.7777777777777778,
+        "mean_within_tree_ra_std": 0.07932852501128997,
+        "mean_report_reward": 0.5854166666666667,
+        "frac_R_positive": 0.8125,
+        "mean_abs_conservation_gap": 0.16614583333333335
+      },
+      {
+        "n_trees": 16,
+        "n_children": 54,
+        "recursion_rate": 0.875,
+        "frac_children_cite0": 0.8148148148148148,
+        "mean_cites_per_child": 0.35185185185185186,
+        "frac_children_credit0": 0.8703703703703703,
+        "mean_within_tree_ra_std": 0.055556169974466066,
+        "mean_report_reward": 0.6510416666666667,
+        "frac_R_positive": 0.9375,
+        "mean_abs_conservation_gap": 0.2947916666666667
+      },
+      {
+        "n_trees": 16,
+        "n_children": 63,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.7301587301587301,
+        "mean_cites_per_child": 0.7301587301587301,
+        "frac_children_credit0": 0.8571428571428571,
+        "mean_within_tree_ra_std": 0.06543361581850304,
+        "mean_report_reward": 0.7395833333333334,
+        "frac_R_positive": 0.875,
+        "mean_abs_conservation_gap": 0.3104166666666667
+      },
+      {
+        "n_trees": 16,
+        "n_children": 49,
+        "recursion_rate": 0.8125,
+        "frac_children_cite0": 0.673469387755102,
+        "mean_cites_per_child": 0.8367346938775511,
+        "frac_children_credit0": 0.8775510204081632,
+        "mean_within_tree_ra_std": 0.03337286545002141,
+        "mean_report_reward": 0.4505208333333333,
+        "frac_R_positive": 0.625,
+        "mean_abs_conservation_gap": 0.20572916666666669
+      },
+      {
+        "n_trees": 16,
+        "n_children": 56,
+        "recursion_rate": 0.875,
+        "frac_children_cite0": 0.75,
+        "mean_cites_per_child": 0.5714285714285714,
+        "frac_children_credit0": 0.7678571428571429,
+        "mean_within_tree_ra_std": 0.08937985934222295,
+        "mean_report_reward": 0.7682291666666666,
+        "frac_R_positive": 0.875,
+        "mean_abs_conservation_gap": 0.23958333333333337
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.703125,
+        "mean_cites_per_child": 0.640625,
+        "frac_children_credit0": 0.859375,
+        "mean_within_tree_ra_std": 0.06023762398900093,
+        "mean_report_reward": 0.43229166666666663,
+        "frac_R_positive": 0.5625,
+        "mean_abs_conservation_gap": 0.08854166666666666
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.6875,
+        "mean_cites_per_child": 0.78125,
+        "frac_children_credit0": 0.78125,
+        "mean_within_tree_ra_std": 0.07336781879807946,
+        "mean_report_reward": 0.46822916666666664,
+        "frac_R_positive": 0.8125,
+        "mean_abs_conservation_gap": 0.18645833333333334
+      },
+      {
+        "n_trees": 16,
+        "n_children": 59,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.6271186440677966,
+        "mean_cites_per_child": 1.0508474576271187,
+        "frac_children_credit0": 0.6779661016949152,
+        "mean_within_tree_ra_std": 0.10830024240269508,
+        "mean_report_reward": 0.7416666666666667,
+        "frac_R_positive": 0.875,
+        "mean_abs_conservation_gap": 0.19375
+      },
+      {
+        "n_trees": 16,
+        "n_children": 60,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.5333333333333333,
+        "mean_cites_per_child": 1.2666666666666666,
+        "frac_children_credit0": 0.8,
+        "mean_within_tree_ra_std": 0.08198011886082718,
+        "mean_report_reward": 0.4,
+        "frac_R_positive": 0.5,
+        "mean_abs_conservation_gap": 0.13333333333333333
+      },
+      {
+        "n_trees": 16,
+        "n_children": 50,
+        "recursion_rate": 0.8125,
+        "frac_children_cite0": 0.54,
+        "mean_cites_per_child": 1.26,
+        "frac_children_credit0": 0.76,
+        "mean_within_tree_ra_std": 0.03302345543547505,
+        "mean_report_reward": 0.3,
+        "frac_R_positive": 0.5625,
+        "mean_abs_conservation_gap": 0.18333333333333335
+      },
+      {
+        "n_trees": 16,
+        "n_children": 60,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.45,
+        "mean_cites_per_child": 1.6833333333333333,
+        "frac_children_credit0": 0.5833333333333334,
+        "mean_within_tree_ra_std": 0.08075218506954132,
+        "mean_report_reward": 0.6041666666666666,
+        "frac_R_positive": 0.8125,
+        "mean_abs_conservation_gap": 0.06250000000000001
+      },
+      {
+        "n_trees": 16,
+        "n_children": 63,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.36507936507936506,
+        "mean_cites_per_child": 1.6825396825396826,
+        "frac_children_credit0": 0.6031746031746031,
+        "mean_within_tree_ra_std": 0.07885729353320002,
+        "mean_report_reward": 0.5645833333333333,
+        "frac_R_positive": 0.6875,
+        "mean_abs_conservation_gap": 0.19375
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.5,
+        "mean_cites_per_child": 1.109375,
+        "frac_children_credit0": 0.78125,
+        "mean_within_tree_ra_std": 0.05796966217445301,
+        "mean_report_reward": 0.3862847222222222,
+        "frac_R_positive": 0.5,
+        "mean_abs_conservation_gap": 0.16666666666666669
+      },
+      {
+        "n_trees": 16,
+        "n_children": 63,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.49206349206349204,
+        "mean_cites_per_child": 1.380952380952381,
+        "frac_children_credit0": 0.8412698412698413,
+        "mean_within_tree_ra_std": 0.06588860821398938,
+        "mean_report_reward": 0.3541666666666667,
+        "frac_R_positive": 0.5,
+        "mean_abs_conservation_gap": 0.140625
+      },
+      {
+        "n_trees": 16,
+        "n_children": 63,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.5079365079365079,
+        "mean_cites_per_child": 1.4285714285714286,
+        "frac_children_credit0": 0.8571428571428571,
+        "mean_within_tree_ra_std": 0.07081561895529004,
+        "mean_report_reward": 0.3609375,
+        "frac_R_positive": 0.4375,
+        "mean_abs_conservation_gap": 0.14010416666666667
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.46875,
+        "mean_cites_per_child": 1.40625,
+        "frac_children_credit0": 0.796875,
+        "mean_within_tree_ra_std": 0.05917195479837112,
+        "mean_report_reward": 0.503125,
+        "frac_R_positive": 0.6875,
+        "mean_abs_conservation_gap": 0.20937499999999998
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.484375,
+        "mean_cites_per_child": 1.234375,
+        "frac_children_credit0": 0.71875,
+        "mean_within_tree_ra_std": 0.06215954480720317,
+        "mean_report_reward": 0.42552083333333335,
+        "frac_R_positive": 0.5625,
+        "mean_abs_conservation_gap": 0.10625000000000002
+      },
+      {
+        "n_trees": 16,
+        "n_children": 64,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.5,
+        "mean_cites_per_child": 1.265625,
+        "frac_children_credit0": 0.8125,
+        "mean_within_tree_ra_std": 0.030352374217758726,
+        "mean_report_reward": 0.375,
+        "frac_R_positive": 0.4375,
+        "mean_abs_conservation_gap": 0.17708333333333334
+      },
+      {
+        "n_trees": 16,
+        "n_children": 59,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.4745762711864407,
+        "mean_cites_per_child": 1.4067796610169492,
+        "frac_children_credit0": 0.9322033898305084,
+        "mean_within_tree_ra_std": 0.020826140854573152,
+        "mean_report_reward": 0.17604166666666665,
+        "frac_R_positive": 0.3125,
+        "mean_abs_conservation_gap": 0.08854166666666666
+      },
+      {
+        "n_trees": 16,
+        "n_children": 59,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.4406779661016949,
+        "mean_cites_per_child": 1.4067796610169492,
+        "frac_children_credit0": 0.9322033898305084,
+        "mean_within_tree_ra_std": 0.022543690513621557,
+        "mean_report_reward": 0.10729166666666666,
+        "frac_R_positive": 0.25,
+        "mean_abs_conservation_gap": 0.046875
+      },
+      {
+        "n_trees": 16,
+        "n_children": 59,
+        "recursion_rate": 0.9375,
+        "frac_children_cite0": 0.3728813559322034,
+        "mean_cites_per_child": 1.6610169491525424,
+        "frac_children_credit0": 0.9830508474576272,
+        "mean_within_tree_ra_std": 0.007216878364870322,
+        "mean_report_reward": 0.03125,
+        "frac_R_positive": 0.125,
+        "mean_abs_conservation_gap": 0.015625
+      },
+      {
+        "n_trees": 16,
+        "n_children": 63,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.5714285714285714,
+        "mean_cites_per_child": 0.8888888888888888,
+        "frac_children_credit0": 1.0,
+        "mean_within_tree_ra_std": 0.0,
+        "mean_report_reward": 0.0,
+        "frac_R_positive": 0.0,
+        "mean_abs_conservation_gap": 0.0
+      },
+      {
+        "n_trees": 16,
+        "n_children": 56,
+        "recursion_rate": 0.875,
+        "frac_children_cite0": 0.5714285714285714,
+        "mean_cites_per_child": 1.0535714285714286,
+        "frac_children_credit0": 1.0,
+        "mean_within_tree_ra_std": 0.0,
+        "mean_report_reward": 0.0,
+        "frac_R_positive": 0.0,
+        "mean_abs_conservation_gap": 0.0
+      }
+    ],
+    "slopes": {
+      "frac_children_cite0": -0.018427338077342138,
+      "frac_children_credit0": -0.001130468244302549,
+      "mean_cites_per_child": 0.0470143930839427,
+      "mean_report_reward": -0.018930524657026323,
+      "mean_within_tree_ra_std": -0.0005926494595122022
+    }
+  },
+  "L1": {
+    "n_rows": 25,
+    "n_buckets": 2,
+    "buckets": [
+      {
+        "n_trees": 16,
+        "n_children": 883,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 0.9671574178935447,
+        "mean_cites_per_child": 0.07927519818799547
+      },
+      {
+        "n_trees": 9,
+        "n_children": 500,
+        "recursion_rate": 1.0,
+        "frac_children_cite0": 1.0,
+        "mean_cites_per_child": 0
+      }
+    ],
+    "slopes": {
+      "frac_children_cite0": null,
+      "mean_cites_per_child": null
+    }
+  }
+}

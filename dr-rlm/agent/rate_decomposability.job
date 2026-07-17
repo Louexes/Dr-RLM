@@ -1,0 +1,41 @@
+#!/bin/bash
+# ============================================================================
+# Freeze a per-query DECOMPOSABILITY score (1-5) into the locked eval sets, BEFORE the
+# baseline launch. Rater = unified Qwen3.5-4B (greedy/thinking-off). Validates the LLM axis
+# against each benchmark's built-in difficulty signal (SQA breadth, HealthBench rubric_count).
+# Short job (serve ~1-2min + ~390 tiny ratings). See analysis/rate_decomposability.py.
+# ============================================================================
+#SBATCH --job-name=rate_decomp
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:40:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rate_decomp_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rate_decomp_%j.err
+set -euo pipefail
+
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+MODEL=Qwen/Qwen3.5-4B
+PORT=8000
+mkdir -p "$DRRLM/runs/logs"
+source "$VENV/bin/activate"
+export TOKENIZERS_PARALLELISM=false
+
+VLLM_LOG="$DRRLM/runs/logs/rate_decomp_vllm_${SLURM_JOB_ID:-local}.log"
+echo "[serve] vllm serve $MODEL on :$PORT (thinking off) -> $VLLM_LOG"
+vllm serve "$MODEL" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.85 --max-model-len 32768 --enforce-eager \
+  --default-chat-template-kwargs '{"enable_thinking": false}' \
+  --served-model-name "$MODEL" > "$VLLM_LOG" 2>&1 &
+VLLM_PID=$!
+trap 'kill $VLLM_PID 2>/dev/null || true' EXIT
+
+echo "[serve] waiting for readiness ..."
+for s in $(seq 1 180); do
+  curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve] ready ~$((s*5))s"; break; }
+  sleep 5; kill -0 $VLLM_PID 2>/dev/null || { echo "[FATAL] vllm died"; tail -40 "$VLLM_LOG"; exit 1; }
+done
+
+python "$DRRLM/analysis/rate_decomposability.py" "http://localhost:$PORT/v1" "$MODEL"
+echo "[done] decomposability frozen into data/subsets/eval_locked_manifest.json"

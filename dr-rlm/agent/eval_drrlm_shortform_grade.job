@@ -1,0 +1,45 @@
+#!/bin/bash
+# ============================================================================
+# Grade the untrained DR-RLM short-form baseline OFF-GPU (staging = internet, ~0 SBU).
+# Gemini-2.5-flash via the OpenAI-compat endpoint, DR-Tulu evaluate.py:
+#   simpleqa -> SimpleQAEval (correct/incorrect/not_attempted -> accuracy)
+#   2wiki/webwalker -> ShortFormQAEval(metric="judge") -> judge accuracy
+# Gold rides in each row's original_data (built coverage-safe). Runs after gen.
+# ============================================================================
+#SBATCH --job-name=drrlm_sf_grade
+#SBATCH --partition=staging
+#SBATCH --cpus-per-task=4
+#SBATCH --time=01:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drrlm_sf_grade_%j.out
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+OUT=${OUT:-$DRRLM/runs/drrlm_untrained_shortform_thinkon}
+source "$VENV/bin/activate"
+source "$DRRLM/keys.sh"                       # exports GEMINI_API_KEY
+export OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+export OPENAI_API_KEY="$GEMINI_API_KEY"
+export PYTHONPATH=$AGENT:${PYTHONPATH:-}
+cd "$AGENT"
+
+for TASK in simpleqa 2wiki webwalker; do
+  f="$OUT/${TASK}.jsonl"
+  [ -s "$f" ] || { echo "[skip] $TASK: no gen output at $f"; continue; }
+  echo; echo "########## GRADE $TASK (gemini-2.5-flash, off-GPU) ##########"
+  python scripts/evaluate.py "$TASK" "$f" --grader-model gemini-2.5-flash \
+    2>&1 | grep -viE "Authlib|joserfc|Loaded [0-9]+ examples from HF" | tail -12
+done
+
+echo; echo "===== SHORT-FORM UNTRAINED DR-RLM (thinking-ON) SUMMARY ====="
+python - "$OUT" <<'PY'
+import json,os,sys
+OUT=sys.argv[1]
+for t in ("simpleqa","2wiki","webwalker"):
+    rf=os.path.join(OUT,f"{t}_eval_results.json")
+    if os.path.exists(rf):
+        d=json.load(open(rf)); sc=d.get("score") or (d.get("metrics") or {}).get("accuracy")
+        print(f"  {t:10s} score={sc}  n={d.get('num_examples') or d.get('n')}")
+    else:
+        print(f"  {t:10s} (no results file)")
+PY

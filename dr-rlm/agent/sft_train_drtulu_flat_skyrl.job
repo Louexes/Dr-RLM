@@ -1,0 +1,84 @@
+#!/bin/bash
+# ============================================================================
+# DR-Tulu (FLAT baseline) cold-start SFT via SkyRL native SFT.
+# Infra-only MIRROR of sft_train_drrlm_skyrl.job (the recursive arm): identical
+# stack/hyperparameters/masking, only the data + ckpt/run names differ. This is
+# the fairness contract (D5, pivoted 2026-07-04): both arms train on SkyRL native
+# SFT so the SFT->RL handoff is identical (transformers 5.8, text-only load
+# Qwen3_5ForCausalLM, same tokenizer/template).
+#
+# DATA = data/sft/primary/dr_tulu_flat_primary_multiturn.jsonl (104 rows, one flat
+#   ReAct trajectory per prompt). Re-serialized from dr_tulu_flat_primary.jsonl by
+#   scripts/flat_to_multiturn.py so each <tool_output> is a USER turn -> SkyRL's
+#   ALL_ASSISTANT_MESSAGES masking excludes retrieved snippets from the loss,
+#   exactly like the recursive arm masks tool_output/subagent_output. Assistant
+#   turns = <think>+<call_tool> and final <answer>; reasoning+report kept in loss.
+#
+# EPOCHS = 2 to match the recursive arm's locked decision (num_steps=68 there = 2ep
+#   over 266 rows). Here 104 rows / batch 8 = 13 steps/epoch -> num_steps=26 = 2 epochs.
+#   Override with `num_steps=...` on the CLI if the gate eval wants a 1/2/3 sweep.
+# ============================================================================
+#SBATCH --job-name=sft_drtulu_flat_skyrl
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=2
+#SBATCH --cpus-per-task=32
+#SBATCH --time=02:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sft_drtulu_flat_skyrl_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sft_drtulu_flat_skyrl_%j.err
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+SKYRL=$REPO/rl/skyrl
+DATA=$REPO/data/sft/primary/dr_tulu_flat_primary_multiturn.jsonl
+CKPT=/scratch-shared/lgehringer/ckpts/dr_tulu_flat_sft
+mkdir -p "$CKPT" "$REPO/runs/logs"
+
+export HF_HOME=/scratch-shared/lgehringer/hf_cache HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1
+export TOKENIZERS_PARALLELISM=false
+export UV_CACHE_DIR=/scratch-shared/lgehringer/uv_cache
+
+# CUDA toolkit (flash-attn / any JIT compile)
+source /etc/profile.d/lmod.sh 2>/dev/null || true
+module load 2024 2>/dev/null || true; module load CUDA/12.6.0 2>/dev/null || true
+export CUDA_HOME=${CUDA_HOME:-${EBROOTCUDA:-}}
+
+# W&B ONLINE (live dashboard); skyrl asserts on WANDB_API_KEY + forwards it to Ray workers
+export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticators('api.wandb.ai')[2])")
+
+[ -s "$DATA" ] || { echo "[FATAL] SFT data missing: $DATA"; exit 1; }
+echo "[sft] DR-Tulu flat: $(wc -l < "$DATA") rows -> SkyRL native SFT (Qwen3.5-4B text-only)"
+
+cd "$SKYRL"
+# NODE-FIX (per run_dr_rlm_L3.sh): launch via venv python DIRECTLY, NOT `uv run` — on these
+# gpu_h100 nodes Ray re-launches every worker via `uv run` and hangs (ray._private import).
+env -u VIRTUAL_ENV ./.venv/bin/python -m skyrl.train.main_sft \
+    strategy=fsdp2 \
+    model.path=Qwen/Qwen3.5-4B \
+    language_model_only=true \
+    dataset_name="$DATA" \
+    messages_key=conversations \
+    train_on_what=all_assistant_messages \
+    max_length=32768 \
+    num_steps=26 \
+    batch_size=8 \
+    micro_train_batch_size_per_gpu=1 \
+    use_sample_packing=false \
+    optimizer_config.lr=4e-5 \
+    optimizer_config.scheduler=cosine \
+    optimizer_config.num_warmup_steps=3 \
+    optimizer_config.weight_decay=0.0 \
+    optimizer_config.max_grad_norm=1.0 \
+    placement.num_nodes=1 \
+    placement.num_gpus_per_node=2 \
+    fsdp_config.cpu_offload=false \
+    fsdp_config.reshard_after_forward=true \
+    seed=42 \
+    logger="['console','wandb']" \
+    project_name=dr-rlm-sft \
+    run_name=drtulu_flat_skyrl \
+    ckpt_path="$CKPT" \
+    hf_save_interval=100000 \
+    export_path="$CKPT/hf" \
+    "$@"
+
+echo "[sft] done -> HF checkpoint under $CKPT/hf/"

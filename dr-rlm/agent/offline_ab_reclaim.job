@@ -1,0 +1,57 @@
+#!/bin/bash
+# SLURM job — OFFLINE A/B: RE-CLAIM child-citation carry rule (DRB n=16 + sqav2 n=8).
+# Canonical-candidate fix for the root-carry pathology found on the CANONICAL prompt
+# (runs/offline_sqa_check_v2: 3/8 sqav2 roots cited 0 while children cited 23/10/2; same
+# failure shape in DRB checktool v2/v3): roots paraphrase their synthesis, then reconcile
+# citations with `if claim in content` and keep nothing. The variant
+# (prompts/variants/reclaim.txt) changes ONE rule in DELEGATION_STRUCTURED: carry the id
+# unchanged but REWRITE the claim to your own sentence (re-claim), instead of
+# keep-claim-verbatim. Read: zero-cite roots (sqav2 was 3/8, DRB control ~0), cites &
+# valid cites/article (DRB control 11.25/4.58), valid_rate (0.407), RACE (0.352), sqav2
+# citation_precision/recall (now measurable via the snippet-blocks export fix).
+#SBATCH --job-name=offline_ab_reclaim
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=05:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_reclaim_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_reclaim_%j.err
+set -euo pipefail
+
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+BASE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_ab_reclaim
+
+COMMON_ENV() {
+  export ARMS=structured
+  export DR_RLM_CAPTURE_LEDGER=1
+  export MODEL=gemini-2.5-flash
+  export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+  export MODEL_API_KEY_ENV=GEMINI_API_KEY
+  export TOKENIZER=Qwen/Qwen3-8B
+  export MAX_DEPTH=1
+  export SEARCH_BACKEND=local_jsonl
+  export MAX_TOOL_CALLS=200
+  export MAX_CHILDREN=6
+  export GRADE=1
+  export SAVE_TRAJ=1
+  export CITATION_VERIFY=0
+  export CHECK_TOOL=0
+  export DR_RLM_PROMPT_FILE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/prompts/variants/reclaim.txt
+}
+
+COMMON_ENV
+export BENCH=deep_research_bench NUMEX=16
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/drb.jsonl
+export OUT=$BASE/drb
+echo "[ab] RECLAIM arm DRB n=16 ..."
+./ab_child_return.sh || echo "[warn] drb arm failed"
+
+COMMON_ENV
+export BENCH=sqav2 NUMEX=8
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/sqav2.jsonl
+export SQAV2_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/sqav2_cs100.jsonl
+export OUT=$BASE/sqav2
+echo "[ab] RECLAIM arm sqav2 n=8 ..."
+./ab_child_return.sh || echo "[warn] sqav2 arm failed"
+
+echo "[offline_ab_reclaim] done -> $BASE"

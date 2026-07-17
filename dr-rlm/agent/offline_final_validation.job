@@ -1,0 +1,67 @@
+#!/bin/bash
+# SLURM job — FINAL FREEZE-CANDIDATE VALIDATION: the exact config the frozen baseline will
+# ship, on all 4 benchmarks, offline. Prompt = final_v3 (capstone + measurement principle),
+# CHECK_TOOL=1, CITATION_VERIFY=0, neutral RQA statement, canonical (symmetric-ready) HB
+# framing. CITE_BOUNCE passed at submit: sbatch --export=ALL,CITE_BOUNCE=0|1 per the
+# offline_ab_bounce verdict. Refs to hold/beat: DRB 4.29 valid @ 0.714 / RACE 0.330;
+# sqav2 0.569; RQA 0.602; HB 0.294/0.240.
+#SBATCH --job-name=offline_final_validation
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=06:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_final_validation_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_final_validation_%j.err
+set -euo pipefail
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+BASE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_final_validation
+CITE_BOUNCE=${CITE_BOUNCE:-0}
+
+COMMON_ENV() {
+  export ARMS=structured
+  export DR_RLM_CAPTURE_LEDGER=1
+  export MODEL=gemini-2.5-flash
+  export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+  export MODEL_API_KEY_ENV=GEMINI_API_KEY
+  export TOKENIZER=Qwen/Qwen3-8B
+  export MAX_DEPTH=1
+  export SEARCH_BACKEND=local_jsonl
+  export MAX_TOOL_CALLS=200
+  export MAX_CHILDREN=6
+  export GRADE=1
+  export SAVE_TRAJ=1
+  export CITATION_VERIFY=0
+  export CHECK_TOOL=1
+  export CITE_BOUNCE=$CITE_BOUNCE
+  export DR_RLM_PROMPT_FILE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/prompts/variants/final_v3.txt
+}
+
+COMMON_ENV
+export BENCH=deep_research_bench NUMEX=16
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/drb.jsonl
+export OUT=$BASE/drb
+echo "[final] DRB n=16 (bounce=$CITE_BOUNCE) ..."; ./ab_child_return.sh || echo "[warn] drb failed"
+
+COMMON_ENV
+export BENCH=researchqa NUMEX=8
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/researchqa.jsonl
+export DR_RLM_TASK_FRAMING_JSON='{"researchqa": "Answer the question completely and precisely in 240-260 words. Write one to three paragraphs (do not enumerate the facts), and support every statement with an in-line citation to a retrieved snippet."}'
+export OUT=$BASE/researchqa
+echo "[final] RQA n=8 neutral statement ..."; ./ab_child_return.sh || echo "[warn] rqa failed"
+unset DR_RLM_TASK_FRAMING_JSON
+
+COMMON_ENV
+export BENCH=healthbench NUMEX=7
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/healthbench.jsonl
+export HEALTHBENCH_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/healthbench_hard_repr.jsonl
+export OUT=$BASE/healthbench
+echo "[final] HB n=7 ..."; ./ab_child_return.sh || echo "[warn] hb failed"
+
+COMMON_ENV
+export BENCH=sqav2 NUMEX=8
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/sqav2.jsonl
+export SQAV2_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/sqav2_cs100.jsonl
+export OUT=$BASE/sqav2
+echo "[final] sqav2 n=8 ..."; ./ab_child_return.sh || echo "[warn] sqav2 failed"
+
+echo "[offline_final_validation] done -> $BASE"

@@ -1,0 +1,51 @@
+#!/bin/bash
+# SLURM job — CROSS-BENCHMARK neutrality check (ResearchQA + HealthBench), current harness.
+# Validates the benchmark-neutrality refactor (process in system_prompt, output-shape in
+# _TASK_FRAMING) + the uncited-report fixes generalize beyond DRB. Confirms the DRB-flavored
+# work did NOT regress the SHORT-answer (ResearchQA 240w) and SAFETY (HealthBench) benchmarks.
+# Runs sequentially in ONE job (shared MCP). ResearchQA = coverage; HealthBench = rubric.
+#   Est Serper: ~13 calls/item x 8 x 2 benches ~= 210 credits.
+#SBATCH --job-name=crossbench_v5
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=06:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/crossbench_v5_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/crossbench_v5_%j.err
+set -euo pipefail
+
+mkdir -p /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+
+COMMON_ENV() {
+  export ARMS=structured
+  export DR_RLM_CAPTURE_LEDGER=1
+  export MODEL=gemini-2.5-flash
+  export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+  export MODEL_API_KEY_ENV=GEMINI_API_KEY
+  export TOKENIZER=Qwen/Qwen3-8B
+  export MAX_DEPTH=1
+  export SEARCH_BACKEND=web
+  export MAX_TOOL_CALLS=200
+  export MAX_CHILDREN=6
+  export GRADE=1
+  export SAVE_TRAJ=1
+  export NUMEX=8
+}
+
+# ResearchQA (short-answer; 240-260w framing) — does the neutral prompt respect the length cap?
+COMMON_ENV
+export BENCH=researchqa
+export MCP_PORT=8031
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/crossbench_v5/researchqa
+echo "[crossbench] ResearchQA ..."; ./ab_child_return.sh || echo "[warn] researchqa arm failed"
+
+# HealthBench (safety/medical; scoped+hedged framing)
+COMMON_ENV
+export BENCH=healthbench
+export MCP_PORT=8032
+export HEALTHBENCH_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/healthbench_hard_repr.jsonl
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/crossbench_v5/healthbench
+echo "[crossbench] HealthBench ..."; ./ab_child_return.sh || echo "[warn] healthbench arm failed"
+
+echo "[crossbench_v5] done"

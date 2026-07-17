@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH --job-name=w1_a2_smoke
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=02:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2_smoke_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2_smoke_%j.err
+
+# ============================================================================
+# W1 / Arm A2 SMOKE (n=2) : GPT-5-mini in the rlm/ RECURSIVE harness, run DEEP.
+#   CPU partition (genoa) — NO GPU (commercial API + online MCP only). On a SLURM
+#   job (NOT the login node) because deep recursion can run well past the ~10min
+#   login-node reaper window. Generates + grades 2 RQA + 2 DRB so we get sane,
+#   in-range scores to see where the RLM scaffold stands vs the A1/A3 anchors.
+# ============================================================================
+set -euo pipefail
+export ARM=A2_smoke
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/A2_smoke
+export MCP_PORT=8031
+export MODEL=gpt-5-mini
+export MAX_DEPTH=${MAX_DEPTH:-5}     # DEEP — see what gpt-5-mini does with the flexibility
+export MAX_ITERS=${MAX_ITERS:-20}
+export MAX_SUBCALLS=${MAX_SUBCALLS:-4}
+export NUMEX=2
+export GRADE=1
+bash /gpfs/home5/lgehringer/Dr-RLM/drrlm/agent/run.sh

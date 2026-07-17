@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=w1_a2flat_rqa
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=03:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2flat_rqa_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2flat_rqa_%j.err
+
+# W1 / A2-FLAT — REPL substrate, NO recursion, per-AGENT tool budget == A3's 10.
+# Isolates the REPL environment vs A3 (DR-Tulu ReAct) at matched per-agent budget. ResearchQA.
+set -euo pipefail
+export ARM=A2flat
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/A2flat
+export BENCH=researchqa
+export MCP_PORT=8050
+export MODEL=gpt-5-mini
+export MAX_DEPTH=1                 # flat: rlm injects subcall_fn only when max_depth>1, so no recursion; root runs the REPL
+export ORCHESTRATOR=false          # drop the decompose/delegate addendum
+export TOOL_BUDGET_SCOPE=node      # per-agent budget
+export MAX_TOOL_CALLS=10           # == A3's tool budget
+export ITEM_TIMEOUT=${ITEM_TIMEOUT:-900}
+export NUM_SHARDS=${NUM_SHARDS:-6}
+export NUMEX=                       # all of the RQA subset (49)
+export GRADE=1
+bash /gpfs/home5/lgehringer/Dr-RLM/drrlm/agent/run.sh

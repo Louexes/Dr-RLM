@@ -1,0 +1,21 @@
+#!/bin/bash
+# Graft the flat DR-Tulu RL export (text weights, step 75) into the multimodal shell so vLLM can
+# serve it. CPU-only safetensors remap -> staging partition (free, no SBU). Mirror of graft_rl_be68.
+#SBATCH --job-name=graft_rl_drtulu_flat
+#SBATCH --partition=staging
+#SBATCH --cpus-per-task=8
+#SBATCH --time=00:40:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/graft_rl_drtulu_flat_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/graft_rl_drtulu_flat_%j.err
+set -euo pipefail
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+BASE=/scratch-shared/lgehringer/hf_cache/hub/models--Qwen--Qwen3.5-4B/snapshots/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+STEP=${STEP:-75}
+TEXT=/scratch-shared/lgehringer/rl_drtulu_flat_exports/global_step_${STEP}/policy
+OUT=/scratch-shared/lgehringer/rl_drtulu_flat_exports/global_step_${STEP}/served
+source "$VENV/bin/activate"
+if [ -f "$OUT/config.json" ]; then echo "[graft] already present -> $OUT (skip)"; exit 0; fi
+[ -f "$TEXT/config.json" ] || { echo "[FATAL] no text export at $TEXT (is the RL run at step $STEP yet?)"; exit 1; }
+python "$DRRLM/scripts/graft_text_into_multimodal.py" --base "$BASE" --text "$TEXT" --out "$OUT"
+echo "[graft] done -> $OUT"

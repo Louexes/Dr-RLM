@@ -1,0 +1,813 @@
+{
+  "created": "2026-07-03",
+  "purpose": "SFT teacher-generation prompts (SFT_PLAN_2026-07-03.md, D3: held out from RL + eval)",
+  "seed": 42,
+  "N": 200,
+  "rule": "questions.jsonl split=sft qtype=long_form, qid-sorted, minus RL-40/eval-locked text collisions, random.Random(seed).sample",
+  "source_file": "/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/frozen_corpus/questions.jsonl",
+  "source_sha256": "213e6bd9e596d6d2507e8688beb1420e2194e7c378a7be215a4305bc01d17ed7",
+  "pool_size": 439,
+  "collisions_dropped": 0,
+  "entries": [
+    {
+      "qid": "sft-000b8c583d85587e",
+      "question": "research has explored CSP’s role in global energy systems, particularly its complementarity with wind and PV, as well as its potential to enhance grid stability through thermal storage"
+    },
+    {
+      "qid": "sft-023e697dd01ea76c",
+      "question": "What does animal studies show on effects of hempseed on platelet aggregation and thrombosis?"
+    },
+    {
+      "qid": "sft-0271835fe6b74a0c",
+      "question": "hetero vs homo cloud computing and its effect on load balancers"
+    },
+    {
+      "qid": "sft-034ef39b1b87ed81",
+      "question": "find papers that develop LLM-human interaction framework for education/learning purpose"
+    },
+    {
+      "qid": "sft-04475ae5a5d512d9",
+      "question": "Help me to prepare a research paper on buyback of shares in India. The main chapters for research is to find legal & regulatory frameworks, motives & methods of share buyback, procedures & challenges for share buyback. Now help me to write research questions."
+    },
+    {
+      "qid": "sft-082a9f3da9b9d56d",
+      "question": "Please let me know the list of papers in which dopamine D1 receptor is overexpressed in the brain of mice and their behaviors were assessed."
+    },
+    {
+      "qid": "sft-08704dd4211894d2",
+      "question": "Please check for prior work on heterogeneity in the oligodendrocyte progenitor cell (OPC) population in human, derived from ipsc"
+    },
+    {
+      "qid": "sft-09e1ab2d5d7bbb4f",
+      "question": "Research on the Afterglow Performance of Luminescent Materials Activated by Tb3+ Ions"
+    },
+    {
+      "qid": "sft-0a8267b63ef0c4ec",
+      "question": "what work has been done on AGM Belif Change for arbitrary logics?"
+    },
+    {
+      "qid": "sft-0cd9d5407257c7a8",
+      "question": "tell me multiple criteria decision making using convex cones for the selection problem in an interactive algorithm."
+    },
+    {
+      "qid": "sft-0d250b9f3575bfdb",
+      "question": "research gaps related to machine learning as applied to rr lyrae variable stars"
+    },
+    {
+      "qid": "sft-0d572d88fe0df80c",
+      "question": "Why is decentralisation important in Near RT RIC? Do we have published works?"
+    },
+    {
+      "qid": "sft-1083ebe2671c9933",
+      "question": "Cerebral ischemia mortality and epidemiology world wide, conventional treatment methods and their limitations"
+    },
+    {
+      "qid": "sft-10eabef813218f98",
+      "question": "Can albumin uptake protect endothelial cells from apoptosis induced by TNF-α?"
+    },
+    {
+      "qid": "sft-14259ccbc9d8367c",
+      "question": "If you were writing a literature review of an academic article entitled Knowledge Sharing Decisions in New Energy Vehicle Supply Chain: Based on Evolutionary Game, what three sections would the literature review include?"
+    },
+    {
+      "qid": "sft-150f2034d4b13159",
+      "question": "Parameter-level hybridization approaches like Mixture-of-Experts (MoE) systems face architectural constraints: they mandate homogeneous submodel configurations (strict alignment of hidden layer dimensions, attention heads, etc.) and typically utilize only partial network components (e.g., FFN layers alone), failing to leverage full-model reasoning capacities."
+    },
+    {
+      "qid": "sft-16022bda36569942",
+      "question": "Investigating other decomposition techniques beyond VMD (variational mode decomposition)"
+    },
+    {
+      "qid": "sft-17599d1e0235b507",
+      "question": "whole-genome resequencing and reduced-representation sequencing methods for pooling analysis and association studies"
+    },
+    {
+      "qid": "sft-185cc5523052f28f",
+      "question": "Discuss the process by which the HVP virus gains entry into host cells. Include in your answer the specific host cell receptors that HVP targets for attachment, the structural or molecular features of the virus that mediate this binding, and the subsequent modes of entry (e.g., endocytosis, membrane fusion). How do these interactions determine viral tropism and host specificity?"
+    },
+    {
+      "qid": "sft-1a1bb2916245f4f7",
+      "question": "phytobiological investigation and molecular docking studies of secondary metabolites from saussurea lappa roots"
+    },
+    {
+      "qid": "sft-1a4fd16f8ca1e813",
+      "question": "• Email Phishing: o Analysis of the latest research articles on email phishing. o Insights into the visual and interactive features that can help users identify phishing emails."
+    },
+    {
+      "qid": "sft-1ac9a339f5f78713",
+      "question": "Comparative analysis of e-Waste management policies in Africa"
+    },
+    {
+      "qid": "sft-1db64e69ca5b49f4",
+      "question": "Find the latest data uncertainty method in SAR target recognition"
+    },
+    {
+      "qid": "sft-1e1e15d40e68c52a",
+      "question": "are there any studies that investigated the number of COVID-19 patients by phylodynamics-related approaches?"
+    },
+    {
+      "qid": "sft-2080ff959cd966c9",
+      "question": "Please look for papers that show commercial testing tools are not helpful for the widespread adoption of GUI testing."
+    },
+    {
+      "qid": "sft-21fd244ba631e54e",
+      "question": "body surface area impact on CD34 transplantation dose?"
+    },
+    {
+      "qid": "sft-222912a54167ddc8",
+      "question": "How does soil erosion affect solar energy production through PV panels by altering the landscape and potentially leading to dust accumulation on panel surfaces? How does erosion affect wind energy production through wind turbines by altering the terrain and possibly impacting wind patterns or speeds?"
+    },
+    {
+      "qid": "sft-2318ed9e5b398f88",
+      "question": "is there any study that suggest that central corneal thickness is positively related peripheral corneal thickness(the area other than center of cornea), for example larger CCT has larger peripheral thickness, and vice versa"
+    },
+    {
+      "qid": "sft-23fec4c9b0705a26",
+      "question": "Act as a human evolutionary and population genetics expert. Proivde me a summary overview of lactose intolerance and lactase persistent gene adaptation in eurasia with focus on south asia and arctic region"
+    },
+    {
+      "qid": "sft-2446b2cde2eee586",
+      "question": "A comprehensive examination of climate change impacts on agricultural productivity in coastal West Africa, emphasizing data from well-cited and credible studies"
+    },
+    {
+      "qid": "sft-24e0196d22b534b4",
+      "question": "find papers highlighting the neural basis of motor performance, discussing how neural inhibition and excitation, as well as motivational factors, influence maximal muscle force and describe aspects that have not yet been discussed."
+    },
+    {
+      "qid": "sft-2b169412abc77217",
+      "question": "Summarize the key technical contributions and empirical findings of the following paper.Goner: Building Tree-based N-gram-like Model for Semantic Code Clone Detection"
+    },
+    {
+      "qid": "sft-2c68874355bdb117",
+      "question": "What is Sir Michael Howard's opinion on the causes of wars in his book War in European History?"
+    },
+    {
+      "qid": "sft-2de3ac94c863c50c",
+      "question": "[Short-term effectiveness of anterior cruciate ligament reconstruction with LARs artificial ligament]"
+    },
+    {
+      "qid": "sft-2f7046b5d3a4ead5",
+      "question": "what are the benefits and tradeoffs of continuous latent audoencoders and RVQ neural codecs in the audio AI space for deep learning tasks such as audio generation, compression, and other downstream tasks like key recognition and beat tracking"
+    },
+    {
+      "qid": "sft-30652111e7608c25",
+      "question": "Can the method discussed in the following paper solve the practical issue of corrupted input measurements due to actuator nonlinearities (dead-zone and saturation) in AUVs? Tabassum Rasul, Koena Mukherjee. Data-Driven Approach for Parameter Estimation and Control of an Autonomous Underwater Vehicle. 2024. Journal of ETA Maritime Science."
+    },
+    {
+      "qid": "sft-30e8f0d8bfd7b052",
+      "question": "How does the digital divide impact educational opportunities for low-income students in urban areas?"
+    },
+    {
+      "qid": "sft-332407db567815be",
+      "question": "cardiac adverse events of TCHP in breast cancer"
+    },
+    {
+      "qid": "sft-333bf167fb45ac5c",
+      "question": "Can endocytosis protect cells from lysosomal dysfunction?"
+    },
+    {
+      "qid": "sft-33e1738d9e27de54",
+      "question": "the key difference between graphene and hBN as used as a flake in fabricating a 2D quantum device"
+    },
+    {
+      "qid": "sft-33e9910f97b7a6d9",
+      "question": "What evidence is there that regular short form video consumption via social media platforms such as tiktok exacerbates symptoms of social anxiety, depression, and feelings of inadequacy?"
+    },
+    {
+      "qid": "sft-33fb8a67a5b91924",
+      "question": "What are the action areas on the domestic-international linkages related to the United Nations and Member States? How the domestic-international interactions support policy implementation?"
+    },
+    {
+      "qid": "sft-3595c06b597708a4",
+      "question": "There have been cases where brain tumors cause behavior changes where they become far more violent and prone to acting on intrusive thoughts, or so I think. Is this true? What parts of the brain (specifically) do they tend to grow in to cause such changes?"
+    },
+    {
+      "qid": "sft-3967e163fc7da335",
+      "question": "Is there any paper that discusses the differences in perception of data reproducibility between academia and private companies?"
+    },
+    {
+      "qid": "sft-3bc5f479627d37c4",
+      "question": "Please search for papers that examine the effects of platelet-derived exosomes on pancreatic beta cells."
+    },
+    {
+      "qid": "sft-4122e253ed2ae189",
+      "question": "is it true that several studies have employed static and dynamic game-theoretic models to capture the strategic interplay between attackers and defenders?"
+    },
+    {
+      "qid": "sft-42d3d00121b0e933",
+      "question": "fire risk assessment using FTA and ETA thesis outline"
+    },
+    {
+      "qid": "sft-455b68ee2f7073db",
+      "question": "How does air density influence the kinetic energy available to wind turbines and their power output?"
+    },
+    {
+      "qid": "sft-461a401d38eef768",
+      "question": "What are some applications of Bayesian Models of Cognition in Social Interaction"
+    },
+    {
+      "qid": "sft-462a605e57f5da7d",
+      "question": "Summary of Post-enhertu (incl. trastuzumab?) treatment patterns in BC and CRC"
+    },
+    {
+      "qid": "sft-478fd63d47ada325",
+      "question": "eu deforestation regulation and challenges in the implementation"
+    },
+    {
+      "qid": "sft-4836f9c5b802b5c9",
+      "question": "can we predict drug resistance phenotypes form mass spectra?"
+    },
+    {
+      "qid": "sft-4949f7c689efade0",
+      "question": "Please compile a table that summarizes the technical challenges, their solutions and key enabling technologies at a detailed level, when utilizing satellite remote sensing for forest biomass estimation with references"
+    },
+    {
+      "qid": "sft-4a1a09cbce9493df",
+      "question": "show me the most recent and relevant surveys/reviews on network intrusion detection systems with generative ai"
+    },
+    {
+      "qid": "sft-4a9a74db5358250f",
+      "question": "summarize the latest research findings on e-commerce impacts on regional vehicles miles traveled and greenhouse gas emissions"
+    },
+    {
+      "qid": "sft-4c10ea89df84f444",
+      "question": "How can AI-based functions within driver assistance functions be safeguarded?"
+    },
+    {
+      "qid": "sft-4daaded45b558943",
+      "question": "I'd like to learn more about complete problems for NL and related complexity classes. Particularly, are there known complete problems for TC1, which is defined as the languages recognizable by log-depth, poly-size threshold circuit families?"
+    },
+    {
+      "qid": "sft-4ed00aa03a1d81f9",
+      "question": "have people used cross-species evolutionary information to infer gene regulatory networks"
+    },
+    {
+      "qid": "sft-4f359a1618af407d",
+      "question": "which method can use logic resource to replace dsp resource and optimize resource utilization of half-band lowpass digital fir filter in fpga?"
+    },
+    {
+      "qid": "sft-5013049dd22126ef",
+      "question": "Are there any examples in biology where, among species of the same lineage, a highly intelligent species emerged and the previously most intelligent species in that lineage was not driven to extinction?"
+    },
+    {
+      "qid": "sft-5019cadc543e3cc3",
+      "question": "papers documenting brain imaging evidence being introduced in medical malpractice cases"
+    },
+    {
+      "qid": "sft-5053890f5ca5ba5e",
+      "question": "Does the severity of pulmonary inflammation correlate with the induction of fibrosis?"
+    },
+    {
+      "qid": "sft-54a2c9ad982db07b",
+      "question": "Classification of Jamming Techniques Suppression Jamming: Explain its purpose (e.g., reducing signal-to-noise ratio) and categorize it further into: Broadband Jamming: Impacts a wide range of frequencies, affecting multiple channels simultaneously. Narrowband Jamming: Targets specific frequencies for precise interference. Pulse Jamming and Sweep Jamming: Briefly describe their mechanisms and frequency characteristics. Matched Spectrum Jamming: Aligns with the satellite signal’s spectral characteristics for greater impact. Deception Jamming: Explain its goal to mislead receivers using false signals and categorize into: Generated Deception Jamming: Creation of signals that mimic real navigation signals. Repeater Deception Jamming: Relaying real signals with modifications."
+    },
+    {
+      "qid": "sft-56002d689e773984",
+      "question": "Find papers that provide an immersive background on the history of academic advising in higher education."
+    },
+    {
+      "qid": "sft-5611d6bed56db76b",
+      "question": "can lapped transforms be used to improve video codecs?"
+    },
+    {
+      "qid": "sft-563aba77c5ec4741",
+      "question": "Please tell me about any papers that discuss how Espresso, the Android GUI testing framework, interacts with the applications under test."
+    },
+    {
+      "qid": "sft-5680b09b6b54b6eb",
+      "question": "find studies that support how high protein intake is important to reverse or slow the rate of onset of frailty markers"
+    },
+    {
+      "qid": "sft-57c5c4697f8716f6",
+      "question": "I need to understand how is post-quantum cryptography and quantum key distribution deployed in telecommunications infrastructure, be it fixed or 4G or 5G mobile networks. Could you help to do up an one-page write-up, with citations from credible sources? Provide relevant diagrams too."
+    },
+    {
+      "qid": "sft-588e9e37f4db5c66",
+      "question": "why is there a CO2 shortage for industry but still an overabundance of CO2 in the atmosphere"
+    },
+    {
+      "qid": "sft-5b2c9c562e6c8afc",
+      "question": "How does soil bulk density influence biodiversity below ground for agricultural fields?"
+    },
+    {
+      "qid": "sft-5cdfab84aca93f96",
+      "question": "Please find 3 recent publications discussing hcc treatment and briefly summarize why is needed to find new drugs for the treatment of advanced hcc"
+    },
+    {
+      "qid": "sft-5f03658c95d3c678",
+      "question": "the black hole mass - galaxy stellar mass relation for star-forming galaxies, observation result"
+    },
+    {
+      "qid": "sft-616219877fbed338",
+      "question": "What are some recent advances on the topic of the eigenstate thermalisation hypothesis, particularly in the context of fermions?"
+    },
+    {
+      "qid": "sft-62c6e5ec1e670e73",
+      "question": "What do you think is the difference of Raman spectra of glass with different Fe impurities?"
+    },
+    {
+      "qid": "sft-646b0a33362e1cc3",
+      "question": "Searching for examples of superconducting nanowires being used in \"Fundamental Physics\""
+    },
+    {
+      "qid": "sft-6516c5b4cc14fc27",
+      "question": "Can you identify any papers about individuals with disabilities in the workplace specifically around personal growth and equity? I'd prefer the papers to be newer and if any touch on the use of AI to assist people with disabilities in the workplace."
+    },
+    {
+      "qid": "sft-651a80ca899d9367",
+      "question": "contextualize the Socio-Cognitive and Personality-Oriented approaches in studying motivation in projects"
+    },
+    {
+      "qid": "sft-65941b75fc9ca046",
+      "question": "In agricultural science, Fat-Protein ratio is commonly used as proxy for ketosis in the cow. which correlation is found in literature of the fat-protein ratio with true ketosis status?"
+    },
+    {
+      "qid": "sft-67b0f9b9de82281a",
+      "question": "What role does caregiver dependence, and power imbalances with healthcare providers play in the vulnerability of elderly individuals regarding informed consent?"
+    },
+    {
+      "qid": "sft-684011b761c0e051",
+      "question": "Summarize the state of the literature about Yamanaka factors and include relevant references to all publications related to cellular reprogramming."
+    },
+    {
+      "qid": "sft-68d18465a1361946",
+      "question": "Are there any papers looking at mRNA expression of adiponectin in various tissues other than fat?"
+    },
+    {
+      "qid": "sft-6a315d5bc932bf4c",
+      "question": "The diagnosis and treatment of Major Depressive Disorder (MDD) in standard clinical practice are sometimes complicated by the intersection between the disorder's symptoms and inherent personality features."
+    },
+    {
+      "qid": "sft-6b94a78564103a7c",
+      "question": "I'm looking for papers dealing with geometric Brownian motion, especially multiple motions that are correlated with each other."
+    },
+    {
+      "qid": "sft-6c9f31ade62faaae",
+      "question": "when to use MSE MAE or R2 to evaluate the performance of a regression model?"
+    },
+    {
+      "qid": "sft-6cd7e15342c6acaa",
+      "question": "Remote Sensing Monitoring of Heavy Metal Pollution in Agricultural Land and Its Correlation with Mining Areas in Hebei Province"
+    },
+    {
+      "qid": "sft-6ff0043ca4ea0f01",
+      "question": "Please tell us about five topics that should be noted in the papers published in the field of the fusion of seismology and information science in the last five years."
+    },
+    {
+      "qid": "sft-7361b687a17df97b",
+      "question": "What are leading methods for generating hard examples of the boolean satisfiability problem, and what are their strengths and weaknesses?"
+    },
+    {
+      "qid": "sft-73f816c8c189ec6b",
+      "question": "\"Please compile a table divided into three sections that summarizes the technical challenges, solutions, and key enabling technologies (at a detailed level) when utilizing SAR imagery for remote sensing.\""
+    },
+    {
+      "qid": "sft-758a821c36e7e282",
+      "question": "Provide a chronological summary of studies that made contributions to the question of how cosmic rays may be modulated by solar wind, varying the cloud-seeding effect on Earth. Start with 1990 and provide at least 20 relevant articles up to the present day, summarizing the key finding of each article."
+    },
+    {
+      "qid": "sft-7618a4d0bc09b496",
+      "question": "Research Status of Embodied Intelligent Robots for Human Performance Enhancement"
+    },
+    {
+      "qid": "sft-77cfbabf8a668a8c",
+      "question": "Can you provide some references about vocal emotion recognition in a lab setting being too cognitively demanding in comparison to real-world vocal emotion perception?"
+    },
+    {
+      "qid": "sft-7ac6ca153d039c6a",
+      "question": "Are there papers describing the diversity and evolution of IL-10 genes?"
+    },
+    {
+      "qid": "sft-7bf349054f7e4214",
+      "question": "Can you find a few papers on control barrier functions for unknown systems, especially where only trajectory data are given?"
+    },
+    {
+      "qid": "sft-7c42e6a863d3e191",
+      "question": "How does air temperature impact solar power generation and the performance of a solar power system, and is this effect directly reported in the literature or only indirectly inferred? If directly mentioned, what is the exact quotation? If indirectly inferred, what logical inference can be drawn?"
+    },
+    {
+      "qid": "sft-7e16d5ec0beab8ea",
+      "question": "I am studying the problem of magnetic field chaos in spin glasses. Are there any papers that discuss whether chaos (sudden state changes) can occur due to a transverse magnetic field with quantum effects, rather than a normal longitudinal magnetic field?"
+    },
+    {
+      "qid": "sft-801d4beb42459b7c",
+      "question": "I am looking for research papers that evaluate how LLMs handle knowledge conflicts across languages possibly due to differing cultural values or norms."
+    },
+    {
+      "qid": "sft-81faca0fc6236d25",
+      "question": "SNARK. made by SRI https://www.ai.sri.com/~stickel/snark.html What is a difference between SMT programs like Yices and the SNARK theorem prover? Which is better?"
+    },
+    {
+      "qid": "sft-82db277cefd30dd3",
+      "question": "why certain groups of postgraduate students (BME/ age) are reticent in participating with academic services. How to improve BME experience with academic services"
+    },
+    {
+      "qid": "sft-832020488e5fb7bd",
+      "question": "Literature review Overseas Women Emigration from Pakistan, challenges and opportunities for Women migrants"
+    },
+    {
+      "qid": "sft-85c1a05c9f85dab7",
+      "question": "Research papers on the optimization, modification, and innovative application of phi29 enzyme, such as improving the amplification efficiency of phi29, enhancing the uniformity of genomic coverage in phi29 amplification, reducing the amplification bias of phi29, and enhancing the amplification effect of phi29 on RNA reverse-transcribed cDNA, etc."
+    },
+    {
+      "qid": "sft-89220537dda0f9a9",
+      "question": "Nurses as Frontline Catalysts in Suicide Management and Post-Attempt Care in Emergency Settings"
+    },
+    {
+      "qid": "sft-8b90113e38d25ac1",
+      "question": "How has AI been used to promote transparency and reduce corruption in governance?"
+    },
+    {
+      "qid": "sft-8c09b352b3a6fa7e",
+      "question": "During late Neogene to Quarternary, three major fault and fracture systems of NE-SW to ENE-WSE, NW-SE, and E-W trends were formed around Akan-Shiretoko volcanic system in the eastern Hokkaido., which may be imprtant for creating geothermal reservoirs. What are the causes of each of these 3 different major fault and fracture system? Under what regional stress fields and plate tectonic movements between Pacific plate and the eastern Hokkaido was each of these 3 different major fault and fracture system formed?"
+    },
+    {
+      "qid": "sft-8c5aa641ab2bb3db",
+      "question": "Look for papers discussing the immune response of koi to Koi Herpesvirus (KHV)."
+    },
+    {
+      "qid": "sft-8c725fa31984bd88",
+      "question": "show me papers on the impact of climate policy uncertainty on corporate greenwashing"
+    },
+    {
+      "qid": "sft-8e3a6f24cfecb25e",
+      "question": "How can AI be used to improve metadata work in academic libraries?"
+    },
+    {
+      "qid": "sft-8f241a979a745122",
+      "question": "What are the specific roles of Nystatin A3 in the regulation of the nervous system or inflammation?"
+    },
+    {
+      "qid": "sft-961907ba55c815b9",
+      "question": "Is there any paper that estimate noise distribution instead of AWGN for underwater acoustic communication?"
+    },
+    {
+      "qid": "sft-9694bbc76f542725",
+      "question": "I would like to use QUIC to allocate bandwidth to each stream and perform congestion control for free-viewpoint video. Do you have any application examples?"
+    },
+    {
+      "qid": "sft-971c82e39c6a19d3",
+      "question": "Help me to prepare a research paper on buyback of shares in India. The main chapters for research is to find legal & regulatory frameworks, motives & methods of share buyback, procedures & challenges for share buyback. Now help me to write research hypothesis."
+    },
+    {
+      "qid": "sft-997f6ccc003644be",
+      "question": "List 10 products that are related to capybara, e.g. capybara pouch, capybara stuffed animal. Give each product a popularity score from 1 to 5, where 5 is most popular."
+    },
+    {
+      "qid": "sft-999787efbc89b4fe",
+      "question": "can transaction cost economics explain differences across university technology transfer outputs?"
+    },
+    {
+      "qid": "sft-99cf6f10b87c9ac2",
+      "question": "If Bosutinib is used to treat triple negative breast cancer, can Bosutinib increase risk of cardiotoxicity when used with anthracyclines or increase the risk of hepatotoxicity when used with interferon and ribavirin?"
+    },
+    {
+      "qid": "sft-9a52ca890b8ad70d",
+      "question": "Can you suggest 6 papers about the methods for Microwave Assisted / Hydrothermal Synthesis of LaMO3 (M=Fe、Co、Ni、Mn) Perovskite Oxides"
+    },
+    {
+      "qid": "sft-9ab570e5c7d368b0",
+      "question": "can you summarize the direct and indirect defense against arthropod herbivores in plants?"
+    },
+    {
+      "qid": "sft-a076e43ed6be28c7",
+      "question": "Can you suggest papers which discuss how research methodologies have diversified to incorporate tools and approaches from multiple fields"
+    },
+    {
+      "qid": "sft-a20d3032e863a34d",
+      "question": "Explain the relation between the type of hot spring water（SO4 type, HCO3 type, Cl-SO4 type, Cl-HCO3 type, Cl type、intermediate type）and geothermal potential. List the type of hot spring water in the order of highest geothermal potential, along with their reasons."
+    },
+    {
+      "qid": "sft-a237c196e5877ca8",
+      "question": "How are academic scientists different from corporate scientists in terms of scientific attitude?"
+    },
+    {
+      "qid": "sft-a2b0d63cb3ee8c58",
+      "question": "Hormonal seed priming in soybean for drought stress tolerance"
+    },
+    {
+      "qid": "sft-a41d3e3d7ea3180d",
+      "question": "Is there a system that can achieve nanosecond-level toa estimation without relying on high transmission bandwidth? I would like to start with the communication signal processing algorithm."
+    },
+    {
+      "qid": "sft-a59b9f8798c447e9",
+      "question": "Conduct a research on the social relevance of investing in S&P500 Healthcare companies, emphasizing how such investments drive innovation in treatments and medications. # Key Considerations - Highlight how investments in S&P500 Healthcare companies stimulate innovation in medical treatments and new drugs. - Discuss the impact of these investments on societal health and advancements."
+    },
+    {
+      "qid": "sft-a629948ab10eb4c6",
+      "question": "I would like to know what research has been done on AI-assisted medical experimental design"
+    },
+    {
+      "qid": "sft-a70b6ce861a4546b",
+      "question": "in the fungus aspergillus nidulans what connections are there between the cell wall integrity signaling pathway and the septation initiation network"
+    },
+    {
+      "qid": "sft-a888fb0459286d8b",
+      "question": "Determinants and drivers of change for digital transformation and digitalization in human resource management: a systematic literature review and conceptual framework building"
+    },
+    {
+      "qid": "sft-a9509f6aefb398bb",
+      "question": "simultaneous multislice acquisition or multi-band acquisition in cardiac MRI"
+    },
+    {
+      "qid": "sft-a9528d3ab8596b26",
+      "question": "Find all papers about stellar streams of globular clusters that introduces methods to make semi-analytic models, like Chen 2024"
+    },
+    {
+      "qid": "sft-a987f0107b55b91c",
+      "question": "Is the lifecycle cost of battery-electric buses higher or lower than diesel buses?"
+    },
+    {
+      "qid": "sft-ab80c932a255c12d",
+      "question": "find a paper or books the integration of FinTech and Islamic finance can reduce BRICS economies’ dependence on Western-dominated financial networks like SWIFT, mitigating the impact of U.S. sanctions and fostering financial sovereignty"
+    },
+    {
+      "qid": "sft-ac23abb4cf9f5646",
+      "question": "Mediating role of workplace well-being in the relationship between talent development and employee performance"
+    },
+    {
+      "qid": "sft-add922650f74e839",
+      "question": "How to design an experimental paradigm to observe changes in brain regions of stroke patients during motor rehabilitation through fNIRS?"
+    },
+    {
+      "qid": "sft-af459c0895dda006",
+      "question": "What are the public datasets and research directions in the field of artificial intelligence in education?"
+    },
+    {
+      "qid": "sft-afa324d25045b089",
+      "question": "Please summarize the literature on the application of large language models in financial markets and sort out possible research directions."
+    },
+    {
+      "qid": "sft-b084b36f011e40d0",
+      "question": "What are good inclusion criteria to use when selecting papers for a literature review/survey on the application of FHE in secure cloud computing?"
+    },
+    {
+      "qid": "sft-b2f6783b4b8653f8",
+      "question": "How does erosion affect the structural stability of ground-mounted solar systems?"
+    },
+    {
+      "qid": "sft-b31c741fe622f03f",
+      "question": "In what ways did the economic policies of the Bretton Woods system shape global trade relations and contribute to the development of international financial institutions after World War II?"
+    },
+    {
+      "qid": "sft-b37a5242d3ed8457",
+      "question": "Current status of research on the impact of government debt on economic growth in Chinese academic circles"
+    },
+    {
+      "qid": "sft-b530f997f495132a",
+      "question": "If people go in ketosis their liver lacking carbs forces it to increase the systemic fat trafciking which results in low density lipoprotein proteins which eventually get turned into LDL?"
+    },
+    {
+      "qid": "sft-b5a425e80c0b0358",
+      "question": "The ISO/IEC 40180 framework consists of three main components: the Process Model, the Description Model, and the Reference Quality Criteria (RQC). The Process Model is a guide to the relevant processes for developing learning scenarios within the whole life cycle of online education. It consists of seven process categories and 38 sub-processes, which can be applied to assess ICT capabilities and challenges in e-government initiatives. I would like to clarify these components and how to benefit from them in the evaluation process by creating questionnaires that can be submitted to Faculty members, students, and admins."
+    },
+    {
+      "qid": "sft-b609ec224217a819",
+      "question": "What are the five-year survival rates of stage one, two, three, and four gastric cancer patients in China, the United States, and Japan?"
+    },
+    {
+      "qid": "sft-b694937fdacf1748",
+      "question": "What is the incidence of complications associated with the use of albumin in plasma exchange?"
+    },
+    {
+      "qid": "sft-b74352c25216b689",
+      "question": "Multi-robot collaborative manufacturing driven by digital twins: advancements, challenges, and future directions"
+    },
+    {
+      "qid": "sft-b787a189c6818f44",
+      "question": "Can endocytosis protect cells from lysosomal injury by LLoMe?"
+    },
+    {
+      "qid": "sft-b80bbda92cc93cb7",
+      "question": "Do researchers use historical population as an instrumental variable to describe the number of public buses in provinces?"
+    },
+    {
+      "qid": "sft-b99b1cba15cdabef",
+      "question": "o What gaps or voids exist in the literature on pet loss and grief?"
+    },
+    {
+      "qid": "sft-bb1d8af572f4953e",
+      "question": "Phosphorus fractions and their relationships with soil properties in subtropical forests of southern China"
+    },
+    {
+      "qid": "sft-bc86d7a77b7877fa",
+      "question": "Give me research papers on the inadequacy of existing privacy and robustness metrics for real-world ML settings like public pretraining and periodic retraining"
+    },
+    {
+      "qid": "sft-be460bd413197d67",
+      "question": "Frequency and mortality of ILD caused by anti-EGFR antibody drug in oncology"
+    },
+    {
+      "qid": "sft-bf3a0eb20534d301",
+      "question": "Search for papers that consider the influence of mesoscale sediment flow characteristics on mechanical behavior of hydrate-bearing sediment deposits. Try to find as much literature as possible, and don't look in just one source."
+    },
+    {
+      "qid": "sft-c085e5ebeead70c1",
+      "question": "Find and summarize the research history of the topic \"Phase relationship of current in superconducting wires/superconducting bridges\", sorted by publication time"
+    },
+    {
+      "qid": "sft-c46a81d95ec80f19",
+      "question": "write a detailed proposal on the health impact of air pollutants including trace gases and aerosols"
+    },
+    {
+      "qid": "sft-c5de403ccd4265f5",
+      "question": "can you talk a little bit about each section in the \"future direction\" sectino of the paper \"Skyrmion qubits: Challenges for future quantum computing applications\""
+    },
+    {
+      "qid": "sft-c802d8f54d6819f0",
+      "question": "write a literature review about use of data envelopment analysis in Takt time"
+    },
+    {
+      "qid": "sft-c85ab07e543f86e1",
+      "question": "Pickering emulsion polymerization of core–shell-structured polyaniline@SiO2 nanoparticles and their electrorheological response"
+    },
+    {
+      "qid": "sft-c8aee142f43f1066",
+      "question": "Can you find me a paper that compares different language model alignment methods, including Best-of-N, expert iteration, DPO, etc.?"
+    },
+    {
+      "qid": "sft-cb0913ff64c00152",
+      "question": "what can you tell me about these current limitations in Internet of Things security \"Weak Security Protocols, Device Heterogeneity, Resource Constraints and Large-Scale Networks\"?"
+    },
+    {
+      "qid": "sft-cb6e54c11592defd",
+      "question": "Does the frequency of use of the paralysed side in stroke patients affect the improvement of upper limb function?"
+    },
+    {
+      "qid": "sft-cba9255acb5617a7",
+      "question": "Suppose that a researcher believed that firstborn children have higher IQs than their later born sisters and brothers because the mother’s ova are younger when firstborns are conceived. This hypothesis would not be testable. Explain why not."
+    },
+    {
+      "qid": "sft-cbb0f745bfc14b21",
+      "question": "how to improve the quality of immunoassay reagents for free thyroxine"
+    },
+    {
+      "qid": "sft-cbd4061e776da44f",
+      "question": "The Influence of Conflict-Responsive Strategic Management on Institutional Resilience: The Mediating Role of Organizational Agility in Palestinian Universities"
+    },
+    {
+      "qid": "sft-cce1e67c4b46b354",
+      "question": "What approach is optimal for sharp sensitivity analysis for offline policy evaluation of confounded contextual bandits?"
+    },
+    {
+      "qid": "sft-cff86aca059167aa",
+      "question": "Impacts of electric vehicles’ subsidy policy on enterprises’ performance such as return on assets and return on equity"
+    },
+    {
+      "qid": "sft-d25dd721f1dd71a8",
+      "question": "what are the recent trends in the non-equilibrium statistical mechanics modes such as directed percolation?"
+    },
+    {
+      "qid": "sft-d4e095af990bb14d",
+      "question": "Why both HDAC inhibitors and HAT inhibitors are effective for cancer"
+    },
+    {
+      "qid": "sft-d5919cc67ae736a8",
+      "question": "how can olfactory cues facilitate driving safety, either presented alone or coupled with other sensory cues"
+    },
+    {
+      "qid": "sft-d7b5a763c048e797",
+      "question": "Find articles written in the last 8 years about mixed-method research studies for space assessment in academic libraries"
+    },
+    {
+      "qid": "sft-d983d66a65136eab",
+      "question": "How can we strengthen the design and use of institutional indicators in graduate programs to go beyond measuring activities and effectively capture real social and territorial impact, while incorporating the perspectives of students, communities, and key stakeholders?"
+    },
+    {
+      "qid": "sft-d9f452885dcf5924",
+      "question": "what are the most recent surveys and reviews on llms in marketing?"
+    },
+    {
+      "qid": "sft-da4bf08f540a8925",
+      "question": "Find me papers for: The Turkish-Iranian rivalry illustrates how middle powers engage in balancing behavior within a neorealist framework. Both states actively pursued internal balancing, with Turkey focusing on military modernization (particularly its drone program) and Iran developing asymmetric warfare capabilities and its defense industry. They simultaneously engaged in external balancing—Turkey maintaining its NATO membership while developing closer ties with Russia, and Iran strengthening strategic alliances with Russia and China while cultivating non-state proxies as force multipliers."
+    },
+    {
+      "qid": "sft-dbadddca2c5e8ddf",
+      "question": "How does doping impact integrated circuit design?"
+    },
+    {
+      "qid": "sft-dbeb08af14e25483",
+      "question": "What is the resistance mechanism of Tetracycline to MRSA?"
+    },
+    {
+      "qid": "sft-de4914dee5b02f11",
+      "question": "Write an introduction for research paper about investigating biological activities and phytochemical content of some plant waste which are red radish leaves, white radish leaves, turnip leaves, ananas peels, ananas core, ananas crown, olive marc and garlic peels."
+    },
+    {
+      "qid": "sft-e1cfb3b0d8ab4b2e",
+      "question": "Understanding the process-product-performance interplay of spray dried drug-polymer systems through complete structural and chemical characterization of single spray dried particles"
+    },
+    {
+      "qid": "sft-e3d77423b62cbcfc",
+      "question": "summarize research about combining project based learning and social and emotional learning"
+    },
+    {
+      "qid": "sft-e58fe60ffc7315d4",
+      "question": "What are research gaps in the research work on \"Use of Artificial Intelligence in Universities\""
+    },
+    {
+      "qid": "sft-e5ed80e955eae795",
+      "question": "Can you tell me about a study on social skills training for children with intellectual disabilities that suggests the importance of psychoeducation?"
+    },
+    {
+      "qid": "sft-ec2c126693a39212",
+      "question": "explain how to solve the heat equation if the time derivatve is half order instead of conventional full derivative"
+    },
+    {
+      "qid": "sft-ec92824f5d432cf7",
+      "question": "can you please find papers on ethical considerations and role of ai in education including the risk of bias in ai systems, data privacy and security concerns, the impact on equity and accessibility and the role of educators in ethical ai implementation"
+    },
+    {
+      "qid": "sft-ede2176c34da0a0a",
+      "question": "does Olaparib work better to treat triple negative breast cancer in patients with CD79B overexpression and LYN overexpression compared to other patients?"
+    },
+    {
+      "qid": "sft-ee267e2de75e51f4",
+      "question": "Challenges in TNBC Metabolomics Research • Technical and methodological limitations o Standardization of techniques o Reproducibility of findings • Biological complexity of TNBC o Tumor microenvironment and metabolic interactions • Data integration and interpretation o Handling large datasets and bioinformatics challenges"
+    },
+    {
+      "qid": "sft-ee95a8180f99ac72",
+      "question": "You are a research assistant specializing in sociology, cultural studies, and computational linguistics. I am writing the motivation section for a paper to be submitted to a top-tier NLP conference (e.g., ACL). My project's context: My paper introduces a new benchmark named TASTE, designed to evaluate how well Vision-Language Models (VLMs) understand the dynamic aspects of culinary culture, such as regional variation, diasporic evolution, and cross-cultural fusion. My immediate goal: I need to write the motivation section (Section 3.1.1), which argues for the necessity of our dynamic benchmark. To do this, I need foundational theories and literature to support the claim that current AI benchmarks, which often focus on static cultural symbols, are insufficient. Please perform the following three tasks: 1. Foundational Theories of Cultural Dynamics: Identify and briefly summarize key academic theories related to cultural globalization and hybridization. Specifically focus on: Glocalization (e.g., by Roland Robertson) Cultural Hybridization / Creolization (e.g., by Ulf Hannerz, Arjun Appadurai) Transnationalism For each theory, provide 1-2 seminal papers or books. 2. Application to Culinary Studies: Find academic literature (from sociology, anthropology, or food studies) that applies the theories above specifically to the domain of food and cuisine. I am particularly interested in papers that discuss how food changes when it crosses borders or how fusion cuisines are formed and perceived. 3. Critique of Current AI Benchmarks: Find papers that critique the limitations of existing multimodal or VQA benchmarks in terms of their cultural representation. Specifically, look for arguments about their static nature, lack of contextual depth, or cultural biases (e.g., Eurocentrism). Required Output Format: For each piece of literature you find, please provide: A concise summary of its core argument. A brief explanation of why it is relevant to my paper's motivation. The full citation in BibTeX format."
+    },
+    {
+      "qid": "sft-ee97a18073cda80e",
+      "question": "How does air quality impact the efficiency and maintenance of wind turbines?"
+    },
+    {
+      "qid": "sft-efbe9cf76a4a5e3d",
+      "question": "Comparison of MOPSO and NSGA-2 in terms of “Number of Pareto solution”"
+    },
+    {
+      "qid": "sft-f0818fef38890a95",
+      "question": "Find papers that describe de novo design of signal peptides"
+    },
+    {
+      "qid": "sft-f17603fdc9c9195d",
+      "question": "what are the major limitations of State Centrism in International Relations theory?"
+    },
+    {
+      "qid": "sft-f24cd4f7c6f3793f",
+      "question": ". I am looking for articles that show how embedding psychologists into subspecialty medical teams reduce medical provider’s level of burnout."
+    },
+    {
+      "qid": "sft-f420eace7e6516fd",
+      "question": "Find papers that considered HOMA-IR of 1.0 or more as insulin resistant in non-diabetic healthy patients. HOMA-IR calculated by HOMA-IR Calculator(oxford)"
+    },
+    {
+      "qid": "sft-f42c2d615da35738",
+      "question": "Is there any research now on how to achieve high-precision timing synchronization under low bandwidth conditions?"
+    },
+    {
+      "qid": "sft-f6c8f0ef56f49a20",
+      "question": "What do papers in AAAI say about why we need to build sharable resources for AI education now."
+    },
+    {
+      "qid": "sft-f7acc52f4b7f9c66",
+      "question": "Find me papers that unify the concept of task vectors in the parameter space to activation steering vectors in the activation space"
+    },
+    {
+      "qid": "sft-f7c636cca096fac5",
+      "question": "What are the Key Models and Methodologies used in sustainable inventory management?"
+    },
+    {
+      "qid": "sft-f8f59766b32494ed",
+      "question": "find papers to investigate whether habitat altered by ecosystem engineers is favorable to others pecies"
+    },
+    {
+      "qid": "sft-fa1110addfd49928",
+      "question": "What effects do TNF-α and GM-CSF have on gene expression in healthy healthy neutrophils? Limit data to studies on humans performed in vitro. Format results as a table."
+    },
+    {
+      "qid": "sft-fa3fcec097aface7",
+      "question": "Rural populations in Mecklenburg County, representing approximately 3.2% of the county's total population, face distinct challenges in maternal healthcare despite the county's overall urban character. These rural communities, primarily located in the northern and southern peripheries of the county, experience significant disparities in pregnancy outcomes compared to their urban counterparts. Limited healthcare infrastructure, with only two obstetric practices serving rural areas, creates geographical barriers where residents must travel an average of 18.7 miles to access specialized prenatal care. Transportation challenges are exacerbated by inconsistent public transit coverage, with 38% of rural residents lacking reliable transportation to medical appointments. Additionally, socioeconomic factors compound these access issues, as rural residents experience higher rates of uninsurance (17.3% vs. 11.8% urban) and lower median household incomes ($47,200 vs. $68,300). These structural barriers contribute to delayed prenatal care initiation, reduced visit frequency, and ultimately poorer pregnancy outcomes among rural residents. This summary examines the epidemiological profile of pregnancy-related health outcomes in rural Mecklenburg County populations to highlight these disparities and inform targeted interventions."
+    },
+    {
+      "qid": "sft-fc694eb2321c5b10",
+      "question": "Literature review on Emigration in Pakistan: Challenges and Opportunities for Women Migrants"
+    },
+    {
+      "qid": "sft-fcdf7ad1e1e9c920",
+      "question": "papers on optical counterparts observational upper limits for GW events in O2 and O4"
+    },
+    {
+      "qid": "sft-fcf953c248a9598f",
+      "question": "find papers that compare self-report measures with implicit measures"
+    },
+    {
+      "qid": "sft-fd6633e2f254ce76",
+      "question": "young male mice vs middle-aged male mice, hippocampal microglia levels"
+    },
+    {
+      "qid": "sft-ff4e63ad12213a72",
+      "question": "theatrical representation of grief king lear; visualizing emotional turmoil on stage"
+    },
+    {
+      "qid": "sft-ffdb737b1c317a65",
+      "question": "Is there any research in economics on discount rates for different type of utility? For example, is real effort discounted the same as consumption utilioty? What about feelings like \"anxiety\" or \"excitement\"? How are they discounted? By discounted, I mean how a decision-maker today values them in their objective function."
+    },
+    {
+      "qid": "sft-ffde2cdde7a26fba",
+      "question": "vehicle routing algorithm supply and demand considering congestion"
+    }
+  ]
+}

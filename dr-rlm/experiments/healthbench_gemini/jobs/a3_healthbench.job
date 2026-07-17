@@ -1,0 +1,62 @@
+#!/bin/bash
+#SBATCH --job-name=w1_a3_hb
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=04:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a3_hb_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a3_hb_%j.err
+
+# W1 / A3 on HealthBench-hard (representative 72): GEMINI-2.5-flash FLAT in the DR-Tulu ReAct
+# harness (litellm gemini/ model). Within-HealthBench comparison vs A2-rec (same model).
+set -euo pipefail
+REPO=/gpfs/home5/lgehringer/Dr-RLM
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+AGENT=$REPO/dr-tulu/agent
+W1=$REPO/drrlm
+OUT=$REPO/drrlm/runs/A3
+mkdir -p "$OUT" "$REPO/drrlm/runs/logs"
+
+ARM=A3
+N=${N:-final_run}
+MCP_PORT=8060
+MODEL=gemini/gemini-2.5-flash
+
+source "$VENV/bin/activate"
+export TOKENIZERS_PARALLELISM=false
+source "$REPO/drrlm/keys.sh"
+export HEALTHBENCH_LOCAL_PATH=$REPO/drrlm/data/subsets/healthbench_hard_repr.jsonl
+
+# NOTE: OVERRIDES defined AFTER keys.sh so ${GEMINI_API_KEY} is populated. The oai
+# config hardcodes *_agent_api_key=${OPENAI_API_KEY}; for gemini/ models that key is
+# rejected ("API key not valid"), so we override both agents to the Gemini key.
+OVERRIDES="use_browse_agent=true,browse_tool_name=jina,search_agent_max_tool_calls=10,search_agent_model_name=${MODEL},browse_agent_model_name=${MODEL},search_agent_api_key=${GEMINI_API_KEY},browse_agent_api_key=${GEMINI_API_KEY},search_agent_temperature=1,browse_agent_temperature=1,tool_calling_mode=native,mcp_port=${MCP_PORT}"
+
+cd "$AGENT"
+MCP_PID=""
+cleanup() { echo "[cleanup] stopping MCP"; [[ -n "$MCP_PID" ]] && kill "$MCP_PID" 2>/dev/null || true; }
+trap cleanup EXIT
+
+echo "[mcp] launching ONLINE MCP backend on :$MCP_PORT"
+python -m dr_agent.mcp_backend.main --port $MCP_PORT > "$REPO/drrlm/runs/logs/${ARM}_hb_mcp_${SLURM_JOB_ID:-local}.log" 2>&1 &
+MCP_PID=$!
+for i in $(seq 1 60); do
+  curl -sf "http://localhost:$MCP_PORT/health" >/dev/null 2>&1 && { echo "[mcp] ready after ~$((i*2))s"; break; }
+  sleep 2
+  kill -0 "$MCP_PID" 2>/dev/null || { echo "[FATAL] MCP died"; exit 1; }
+done
+
+echo "[gen] HealthBench-hard (N=$N, $MODEL, native) ..."
+python workflows/auto_search_sft.py generate-dataset healthbench \
+    --num-examples $N --max-concurrent 8 --batch-size 20 --use-cache \
+    --config workflows/auto_search_sft-oai.yaml \
+    --config-overrides "$OVERRIDES" \
+    --output "$OUT/healthbench.jsonl" < /dev/null
+
+echo "[grade] HealthBench rubric coverage (Gemini-2.5-flash grader via OpenAI-compat) ..."
+{ OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai/" OPENAI_API_KEY="${GEMINI_API_KEY:-}" \
+  python scripts/evaluate.py healthbench "$OUT/healthbench.jsonl" \
+    --save_path "$OUT/hb_eval" --grader-model gemini-2.5-flash 2>&1 | tee "$OUT/healthbench_score.txt"; } \
+    || echo "[warn] healthbench grading failed — generation saved; grade later"
+
+echo "[done] A3 healthbench outputs in $OUT"

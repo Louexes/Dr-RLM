@@ -1,0 +1,64 @@
+# ── Vendored-dependency junk (deps themselves are committed; our patches: dr-rlm/docs/patches_to_deps.md)
+/HALO/
+.git-vendor/
+wandb/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+
+# ── Heavy run outputs, logs & caches
+**/eval_output/
+**/runs/
+**/logs/
+**/.cache/
+*.out
+*.err
+
+# ── Large papers / source documents & personal research vault (kept locally, not pushed)
+/thesis_obsidian/
+/experiments/
+*.pdf
+
+# ── Large data & model artifacts
+*.jsonl
+*.parquet
+*.arrow
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.gguf
+*.npy
+*.npz
+*.db
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# ── Secrets
+**/keys.sh
+*.env
+.env
+
+# ── Build artifacts (frozen corpus + crawl venv; reproducible, huge/many-inode)
+/dr-rlm/data/frozen_corpus/
+/dr-rlm/data/frozen_corpus_pilot/
+/dr-rlm/.venv-crawl/
+
+# ── Python / env
+__pycache__/
+*.pyc
+*.pyo
+/venvs
+.venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# ── OS
+.DS_Store
+Thumbs.db
+
+# ── LaTeX junk
+texput.log

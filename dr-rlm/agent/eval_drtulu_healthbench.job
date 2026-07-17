@@ -1,0 +1,117 @@
+#!/bin/bash
+# ============================================================================
+# Untrained DR-Tulu baseline — HEALTHBENCH (N=120) — THINKING-ON generation +
+# LOCAL Qwen3.5-4B judge (thinking-OFF). Mirrors eval_drtulu_thinkon_full.job
+# (the validated ResearchQA baseline, cov 0.268) exactly: same venv, same serve()
+# two-phase pattern (thinking-ON gen, then a SEPARATE thinking-OFF judge — never
+# co-serve the judge on a thinking-ON endpoint), same bm25s frozen-corpus bridge.
+#
+# Data: the LOCKED stratified-120 set data/subsets/healthbench_strat120.jsonl,
+# loaded via HEALTHBENCH_LOCAL_PATH (dr_agent/dataset_utils/load_dataset.py:286
+# `local_path = local_path or os.environ.get("HEALTHBENCH_LOCAL_PATH")`). The
+# generated reports carry original_data (rubrics + example_tags + prompt_id), so
+# grading reads the SAME 120 items: scripts/evaluate.py healthbench -> run_evaluation
+# -> HealthBenchEval.evaluate(generation_data) reads row["rubrics"]/["example_tags"]
+# from each report's original_data (healthbench_eval.py:610-634).
+#
+# Grader routing: --grader-model <alias> -> ChatCompletionSampler(model=alias) ->
+# OpenAI() honors OPENAI_BASE_URL -> local vLLM served under the alias name. NO Gemini.
+# (Same local-judge pattern eval_flat_baseline.job uses for healthbench, r=0.856.)
+# ============================================================================
+#SBATCH --job-name=drtulu_hb
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=01:30:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_hb_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_hb_%j.err
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+MODEL=Qwen/Qwen3.5-4B; PORT=8010; GRADER_ALIAS=gpt-4.1-mini-2025-04-14
+FROZEN=$DRRLM/data/frozen_corpus; OUT=$DRRLM/runs/drtulu_untrained_thinkon; TASK=healthbench
+N=120
+mkdir -p "$OUT" "$DRRLM/runs/logs"
+source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
+export HEALTHBENCH_LOCAL_PATH=$DRRLM/data/subsets/healthbench_strat120.jsonl
+
+CUR_PID=""; cleanup(){ [ -n "$CUR_PID" ] && kill "$CUR_PID" 2>/dev/null || true; }; trap cleanup EXIT
+serve(){  # $1=enable_thinking(true/false) $2=tag ; sets CUR_PID, waits ready
+  local think="$1" tag="$2"
+  local log="$DRRLM/runs/logs/drtulu_hb_vllm_${tag}_${SLURM_JOB_ID:-local}.log"
+  echo "[serve:$tag] vllm Qwen3.5-4B enable_thinking=$think -> $log"
+  vllm serve "$MODEL" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.85 --max-model-len 32768 --enforce-eager \
+    --default-chat-template-kwargs "{\"enable_thinking\": $think}" \
+    --served-model-name "$MODEL" "$GRADER_ALIAS" > "$log" 2>&1 &
+  CUR_PID=$!
+  for s in $(seq 1 200); do
+    curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve:$tag] ready ~$((s*5))s"; return 0; }
+    sleep 5; kill -0 "$CUR_PID" 2>/dev/null || { echo "[FATAL] vllm($tag) died"; tail -40 "$log"; exit 1; }
+  done; echo "[FATAL] vllm($tag) never ready"; exit 1
+}
+
+# ---- PHASE 1: generation, THINKING ON ----
+serve true gen
+OV="search_tool_name=bm25s,browse_tool_name=bm25s"
+OV="$OV,bm25s_index_path=$FROZEN/bm25s_index,bm25s_corpus_path=$FROZEN/corpus.jsonl"
+OV="$OV,search_agent_base_url=http://localhost:$PORT/v1"
+OV="$OV,search_agent_model_name=$MODEL,search_agent_tokenizer_name=$MODEL"
+OV="$OV,search_agent_temperature=1.0,search_agent_max_tokens=8192"
+OV="$OV,search_agent_max_tool_calls=12,number_documents_to_search=10"
+OV="$OV,tool_calling_mode=parser,use_browse_agent=false"
+cd "$AGENT"; rm -f "$OUT/${TASK}.jsonl"
+echo "[gen] DR-Tulu ReAct THINKING-ON $TASK N=$N ..."
+python "workflows/auto_search_sft.py" generate-dataset "$TASK" \
+  --num-examples "$N" --max-concurrent 8 --batch-size 8 --use-cache \
+  --config "workflows/auto_search_sft.yaml" --config-overrides "$OV" \
+  --output "$OUT/${TASK}.jsonl" < /dev/null
+
+echo; echo "=== DID SEARCHES EXECUTE? (real tool_call_count + retrieved corpus hits) ==="
+python - "$OUT/${TASK}.jsonl" <<'PY'
+import json,sys,re
+rows=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+def walk(o):
+    if isinstance(o,dict):
+        for k,v in o.items(): yield ('k',k,v); yield from walk(v)
+    elif isinstance(o,list):
+        for v in o: yield from walk(v)
+    elif isinstance(o,str): yield ('s',None,o)
+items_searched=tot_exec=tot_hits=ne=0; cite_real=0; cite_all=0
+for r in rows:
+    ft=r.get("full_traces") or {}; ex=hits=0
+    for kind,k,v in walk(ft):
+        if kind=='k' and k=='tool_call_count' and isinstance(v,int): ex+=v
+        if kind=='k' and k=='hits' and isinstance(v,list): hits+=len(v)
+    if ex>0: items_searched+=1
+    tot_exec+=ex; tot_hits+=hits
+    fr=r.get("final_response") or ""
+    if fr.strip(): ne+=1
+    cs=re.findall(r'<cite id="?([^">]+)"?>',fr); cite_all+=len(cs)
+    cite_real+=sum(1 for c in cs if re.match(r'^[0-9a-f]{6,}-\d+$',c))
+print(f"items={len(rows)} non-empty={ne} ({100*ne//max(1,len(rows))}%)")
+print(f"items-that-executed-a-search={items_searched}/{len(rows)}  total executed searches={tot_exec}  total retrieved hits={tot_hits}")
+print(f"citations: {cite_all} total, {cite_real} grounded (surfaced snippet ids)")
+PY
+
+# ---- PHASE 2: grading, THINKING OFF judge (local Qwen, NO Gemini) ----
+echo; echo "[swap] killing thinking-ON serve, starting thinking-OFF judge ..."
+kill "$CUR_PID" 2>/dev/null || true; CUR_PID=""
+for s in $(seq 1 24); do curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && sleep 5 || break; done
+serve false judge
+echo "=== GRADE (healthbench rubric score, thinking-OFF local Qwen judge) ==="
+OPENAI_BASE_URL="http://localhost:$PORT/v1" OPENAI_API_KEY=EMPTY \
+  python scripts/evaluate.py "$TASK" "$OUT/${TASK}.jsonl" \
+    --grader-model "$GRADER_ALIAS" \
+    --save_path "$OUT/${TASK}_eval_results.json" \
+    2>&1 | grep -viE "Grading failed due to bad JSON|Authlib|joserfc" | tail -15
+python - "$OUT/${TASK}_eval_results.json" <<'PY'
+import json,sys,os
+f=sys.argv[1]
+if os.path.exists(f):
+    d=json.load(open(f)); print("VALID untrained DR-Tulu (thinking-ON) HEALTHBENCH score:", d.get("score"), "| n=", d.get("num_examples"))
+else:
+    print("[WARN] no eval json at", f)
+PY
+echo "[done] reports: $OUT/${TASK}.jsonl"

@@ -1,0 +1,48 @@
+### DR-RLM (recursive arm) cold-start SFT — SFT_PLAN_2026-07-03 Step 2.
+### Student = Qwen3.5-4B; data = count-matched recursive primary (110 prompts / 266 rows,
+### 42 LF-trees + 68 SF-roots, root+worker turns). Adapted from dr-tulu's qwen3-8B-sft-final.yaml.
+### Deltas vs the flat arm: dual span masking (tool_output + subagent_output — the recursive
+### REPL wraps sub-agent returns in <subagent_output>), 4B student, cutoff 32768 (max row 31.4k
+### tok — DROP not truncate rule already applied at filter time), 3 epochs (D3, not 5).
+
+### model
+model_name_or_path: Qwen/Qwen3.5-4B
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: full
+deepspeed: examples/deepspeed/ds_z3_config.json
+
+### dataset
+dataset: dr_rlm_recursive_primary
+template: qwen3
+cutoff_len: 32768
+overwrite_cache: true
+preprocessing_num_workers: 16
+dataloader_num_workers: 4
+use_span_masking: true
+mask_span_types: "tool_output,subagent_output"
+
+### output
+output_dir: ckpts/dr_rlm_sft
+logging_steps: 1
+save_strategy: "no"
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: true
+report_to: wandb
+run_name: drrlm_recursive_primary
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 4.0e-5
+num_train_epochs: 3
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+weight_decay: 0.00

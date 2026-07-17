@@ -1,0 +1,60 @@
+#!/bin/bash
+# ============================================================================
+# RECOVERY grade-only job — DR-Tulu untrained HEALTHBENCH (N=120).
+# The original combined job (24346833) TIMED OUT during grading: the LOCAL
+# thinking-OFF Qwen judge grades HB rubrics SERIALLY (~16 calls/min) and 1.5h
+# wall was too short. Reports are banked (runs/drtulu_untrained_thinkon/
+# healthbench.jsonl, 120 rows) — this re-grades them ONLY, IDENTICAL grader
+# (thinking-OFF local Qwen aliased gpt-4.1-mini), with a generous 06:00 wall.
+# No generation, no Gemini. Grading methodology unchanged for consistency with
+# the other HB baselines.
+# ============================================================================
+#SBATCH --job-name=drtulu_hbgrade
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=120G
+#SBATCH --time=06:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_hbgrade_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_hbgrade_%j.err
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+MODEL=Qwen/Qwen3.5-4B; PORT=8009; GRADER_ALIAS=gpt-4.1-mini-2025-04-14
+OUT=$DRRLM/runs/drtulu_untrained_thinkon; TASK=healthbench
+JOBID=${SLURM_JOB_ID:-local}
+mkdir -p "$DRRLM/runs/logs"
+source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
+export HEALTHBENCH_LOCAL_PATH=$DRRLM/data/subsets/healthbench_strat120.jsonl
+
+if [ ! -s "$OUT/${TASK}.jsonl" ]; then echo "[FATAL] no banked reports at $OUT/${TASK}.jsonl"; exit 1; fi
+echo "[info] re-grading $(wc -l < "$OUT/${TASK}.jsonl") banked reports"
+
+VLLM_LOG="$DRRLM/runs/logs/drtulu_hbgrade_vllm_${JOBID}.log"
+echo "[serve] vllm $MODEL THINKING-OFF judge -> $VLLM_LOG"
+vllm serve "$MODEL" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.90 --max-model-len 32768 --max-num-seqs 32 \
+  --served-model-name "$MODEL" "$GRADER_ALIAS" > "$VLLM_LOG" 2>&1 &
+VLLM_PID=$!; trap 'kill $VLLM_PID 2>/dev/null || true' EXIT
+for s in $(seq 1 240); do
+  curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve] ready ~$((s*5))s"; break; }
+  sleep 5; kill -0 $VLLM_PID 2>/dev/null || { echo "[FATAL] vllm died"; tail -40 "$VLLM_LOG"; exit 1; }
+done
+
+cd "$AGENT"
+echo "=== GRADE (healthbench rubric score, thinking-OFF local Qwen judge) ==="
+OPENAI_BASE_URL="http://localhost:$PORT/v1" OPENAI_API_KEY=EMPTY \
+  python scripts/evaluate.py "$TASK" "$OUT/${TASK}.jsonl" \
+    --grader-model "$GRADER_ALIAS" \
+    --save_path "$OUT/${TASK}_eval_results.json" \
+    2>&1 | grep -viE "Grading failed due to bad JSON|Authlib|joserfc" | tail -15
+python - "$OUT/${TASK}_eval_results.json" <<'PY'
+import json,sys,os
+f=sys.argv[1]
+if os.path.exists(f):
+    d=json.load(open(f)); print("DR-Tulu untrained HEALTHBENCH score:", d.get("score"), "| n=", d.get("num_examples"))
+else:
+    print("[WARN] still no eval json at", f)
+PY
+echo "[done]"

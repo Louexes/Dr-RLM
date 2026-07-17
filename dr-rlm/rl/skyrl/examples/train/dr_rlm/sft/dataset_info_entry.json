@@ -1,0 +1,16 @@
+{
+  "dr_rlm_recursive_sft": {
+    "file_name": "dr_rlm_recursive_sft.jsonl",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations"
+    },
+    "tags": {
+      "role_tag": "role",
+      "content_tag": "content",
+      "user_tag": "user",
+      "assistant_tag": "assistant",
+      "system_tag": "system"
+    }
+  }
+}

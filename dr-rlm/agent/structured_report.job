@@ -1,0 +1,39 @@
+#!/bin/bash
+# SLURM job — "B": STRUCTURED reverted from FINDINGS to REPORT-STYLE contract.
+# ONE-VARIABLE cut vs V3 (runs/structured_uncapped_v3): identical prompt, model, tasks,
+# budget(200), child cap(6), FACT fix — the ONLY change is the child->parent contract:
+#   V3  = FINDINGS  (child returns {findings:[atoms], content}; parent stitches atoms)
+#   B   = REPORT    (child returns uniform {content, citations}; parent writes a thorough
+#                    report from content, preserves citations) + "if code errors, write prose & submit"
+# Tests the hypothesis that the FINDINGS contract caused the regression (RACE 0.265->0.091)
+# via terse output + dict-destructuring collapses. Read: report length, collapse rate, RACE, FACT.
+#SBATCH --job-name=structured_report
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=05:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/structured_report_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/structured_report_%j.err
+set -euo pipefail
+
+mkdir -p /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+
+export ARMS=structured
+export DR_RLM_CAPTURE_LEDGER=1   # FACT fix: pop ledger -> populate full_traces.tool_calls
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export TOKENIZER=Qwen/Qwen3-8B
+export BENCH=deep_research_bench
+export NUMEX=8                  # ids 51-58
+export MAX_DEPTH=1
+export SEARCH_BACKEND=web
+export MAX_TOOL_CALLS=200       # same as V3 (hold constant)
+export MAX_CHILDREN=6           # same as V3 (hold constant)
+export GRADE=1
+export SAVE_TRAJ=1
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/structured_report_v4
+
+echo "[job ${SLURM_JOB_ID:-local}] $(hostname) structured REPORT-style n=8 (one-var vs V3 = contract)"
+exec ./ab_child_return.sh

@@ -1,0 +1,43 @@
+#!/bin/bash
+# SLURM job — V5: targeted validation of the three UNCITED-REPORT fixes.
+# Subset = the 5 uncited items from structured_report_n16 (54,55,60,61,62) + 3 healthy
+# controls (52,56,58). Everything else identical to the n16 run. Fixes under test:
+#   1. PAUSED CELL CLOCK (repl._pause_timeout): child/LLM waits no longer count against the
+#      180s cell timeout -> the spawning cell survives long child research, `subs` assigned.
+#   2. UNIFORM CHILD DICT (repl.child_uniform_dict, threaded from child_return_mode):
+#      budget/error entries are {"content","citations"} dicts -> no TypeError dead turns.
+#   3. CITATIONS NUDGE (dr_rlm_env): per-turn WARNING when a structured draft has content
+#      but zero citations.
+# Read: uncited count on the 5 (was 5/5), controls stay cited, then RACE/FACT.
+# Est Serper: ~13 calls/item x 8 ~= 105 credits.
+#SBATCH --job-name=structured_citedisc_v8
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=05:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/structured_citedisc_v8_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/structured_citedisc_v8_%j.err
+set -euo pipefail
+
+mkdir -p /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+
+export ARMS=structured
+export DR_RLM_CAPTURE_LEDGER=1
+export DRB_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/drb_getdoc_fix4.jsonl
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export TOKENIZER=Qwen/Qwen3-8B
+export BENCH=deep_research_bench
+export NUMEX=4
+export MAX_DEPTH=1
+export SEARCH_BACKEND=web
+export MAX_TOOL_CALLS=200
+export MAX_CHILDREN=6
+export GRADE=1
+export SAVE_TRAJ=1
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/structured_citedisc_v8
+
+echo "[job ${SLURM_JOB_ID:-local}] $(hostname) V5 citation-DISCIPLINE validation (same 4 items: was 20.75 cites/art, valid_rate 0.241)"
+exec ./ab_child_return.sh

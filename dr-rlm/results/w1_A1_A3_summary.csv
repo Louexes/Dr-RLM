@@ -1,0 +1,5 @@
+arm,benchmark,n_items,tool_calls_mean,failed_tool_calls_mean,tokens_mean,tokens_source,resp_chars_mean,sec_per_item_peritem,wall_clock_s,concurrency,sec_per_item,headline_quality,quality
+A1,researchqa,49,3.27,0.06,9743.1,usage,15729.98,114.03,417,20,8.51,0.7806122448979592,"{""coverage"": 0.7806122448979592}"
+A1,deep_research_bench,50,3.72,0.14,11266.84,usage,20519.08,135.45,525,20,10.5,0.4385,"{""race_comprehensiveness"": 0.4269, ""race_insight"": 0.4334, ""race_instruction_following"": 0.4846, ""race_readability"": 0.3845, ""race_overall_score"": 0.4385, ""fact_avg_citations_per_article"": 64.34, ""fact_avg_valid_citations_per_article"": 36.66, ""fact_valid_rate"": 0.5698}"
+A3,researchqa,40,9.32,3.48,7093.98,usage,2559.32,110.21,755,8,18.88,0.62890625,"{""coverage"": 0.62890625}"
+A3,deep_research_bench,50,8.22,1.68,8668.68,usage,3416.26,113.7,874,8,17.48,0.2309,"{""race_comprehensiveness"": 0.2109, ""race_insight"": 0.1436, ""race_instruction_following"": 0.3595, ""race_readability"": 0.2017, ""race_overall_score"": 0.2309, ""fact_avg_citations_per_article"": 10.4783, ""fact_avg_valid_citations_per_article"": 9.9565, ""fact_valid_rate"": 0.9502}"

@@ -1,0 +1,60 @@
+#!/bin/bash
+# Direct predictive-entropy per epoch checkpoint (+ base) — the exploration-relevant quantity for RL.
+# H = -Σ p log p over the model's next-token distribution, averaged over unmasked (assistant) positions,
+# on the same 40 held-out + 40 train recursive trajectories used for the NLL probe. Lower H = more peaked.
+#SBATCH --job-name=sweep_ent
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
+#SBATCH --time=00:35:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sweep_entropy_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sweep_entropy_%j.out
+set -euo pipefail
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export HF_HOME=/scratch-shared/lgehringer/hf_cache HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false
+env -u VIRTUAL_ENV rl/skyrl/.venv/bin/python - <<'PY'
+import json, hashlib, random, torch, sys, statistics as st, os
+sys.path.insert(0,"rl/skyrl")
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from skyrl.train.sft_trainer import tokenize_chat_example
+from skyrl.train.config.sft_config import TrainOnWhat
+random.seed(42)
+def h(r): return hashlib.md5(json.dumps(r["conversations"],sort_keys=True).encode()).hexdigest()
+prim=[json.loads(l) for l in open("data/sft/primary/dr_rlm_recursive_primary.jsonl")]
+full=[json.loads(l) for l in open("data/sft/ablation/dr_rlm_recursive_full.jsonl")]
+pset={h(r) for r in prim}; held=[r for r in full if h(r) not in pset]
+def sample(rows,k):
+    root=[r for r in rows if r.get("_node")=="root"]; child=[r for r in rows if r.get("_node")=="child"]
+    random.shuffle(root); random.shuffle(child); return root[:k//2]+child[:k//2]
+held_s=sample(held,40); train_s=sample(prim,40)
+tok=AutoTokenizer.from_pretrained("Qwen/Qwen3.5-4B")
+def mean_entropy(model,rows):
+    # mean predictive entropy over positions that PRODUCE an unmasked assistant token
+    hs=[]
+    for r in rows:
+        o=tokenize_chat_example({"conversations":r["conversations"]},tok,max_length=32768,
+            messages_key="conversations",train_on_what=TrainOnWhat.ALL_ASSISTANT_MESSAGES)
+        ids,lm,na=o["input_ids"],o["loss_mask"],o["num_actions"]
+        if sum(lm)==0: continue
+        f=torch.zeros(len(ids)); f[-na:]=torch.tensor(lm,dtype=torch.float32)
+        pos=[t for t in range(len(ids)-1) if f[t+1]>0]   # producing positions
+        if not pos: continue
+        x=torch.tensor([ids],device="cuda")
+        with torch.no_grad():
+            logits=model(x).logits[0]                    # [seq,vocab] bf16
+            sel=logits[torch.tensor(pos,device="cuda")].float()  # [npos,vocab] only needed rows
+            logp=torch.log_softmax(sel,dim=-1)
+            ent=-(logp.exp()*logp).sum(-1)               # [npos]
+        hs.append(ent.mean().item())
+    return st.mean(hs)
+print("model | held-out H (nats) | train H (nats)  [lower = more peaked / less exploratory]")
+base=AutoModelForCausalLM.from_pretrained("Qwen/Qwen3.5-4B",dtype=torch.bfloat16,device_map="cuda").eval()
+print(f"base  | {mean_entropy(base,held_s):.3f} | {mean_entropy(base,train_s):.3f}")
+del base; torch.cuda.empty_cache()
+for step,ep in [(34,1),(68,2),(102,3)]:
+    p=f"/scratch-shared/lgehringer/ckpts/dr_rlm_sft_sweep/hf/global_step_{step}/policy"
+    m=AutoModelForCausalLM.from_pretrained(p,dtype=torch.bfloat16,device_map="cuda").eval()
+    print(f"{ep}ep   | {mean_entropy(m,held_s):.3f} | {mean_entropy(m,train_s):.3f}")
+    del m; torch.cuda.empty_cache()
+PY

@@ -1,0 +1,58 @@
+#!/bin/bash
+# SLURM job — FROZEN-HARNESS BASELINE: all 4 benchmarks on the FINAL harness, one config.
+# This is the "set in stone before SFT/RL" reference measurement (Louis's directive).
+# Harness = report-style structured contract + all 6 fixes (tool_calls export, answer-state
+# nudge, paused cell clock incl. in-progress wait, uniform child dict, get_doc dict,
+# citation discipline) + benchmark-neutral prompt + HB grader endpoint routing.
+# Sequential benches, shared node, distinct MCP ports.
+#   Est Serper: ~13 calls/item x (16+8+8+8) = ~520 credits.
+#SBATCH --job-name=frozen_baseline_v1
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=12:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/frozen_baseline_v1_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/frozen_baseline_v1_%j.err
+set -euo pipefail
+
+mkdir -p /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+BASE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/frozen_baseline_v1
+
+COMMON_ENV() {
+  export ARMS=structured
+  export DR_RLM_CAPTURE_LEDGER=1
+  export MODEL=gemini-2.5-flash
+  export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+  export MODEL_API_KEY_ENV=GEMINI_API_KEY
+  export TOKENIZER=Qwen/Qwen3-8B
+  export MAX_DEPTH=1
+  export SEARCH_BACKEND=web
+  export MAX_TOOL_CALLS=200
+  export MAX_CHILDREN=6
+  export GRADE=1
+  export SAVE_TRAJ=1
+  # Pre-submit citation verification: OFF (fairness reversal 2026-06-12). The harness pass
+  # is architecture-agnostic (DR-Tulu could bolt the same post-hoc filter onto its reports),
+  # so it confounds head-to-heads; the prompted agent-side replacement failed its A/B
+  # (valid cites 4.58->2.00, RACE -0.05; runs/offline_ab_selfverify). The frozen reference
+  # is verification-free; verification stays as an ablation row (runs/offline_ab_citeverify)
+  # and an RL lever.
+  export CITATION_VERIFY=0
+}
+
+COMMON_ENV; export BENCH=deep_research_bench NUMEX=16 MCP_PORT=8041 OUT=$BASE/drb
+echo "[frozen] DRB n=16 ..."; ./ab_child_return.sh || echo "[warn] drb failed"
+
+COMMON_ENV; export BENCH=researchqa NUMEX=8 MCP_PORT=8042 OUT=$BASE/researchqa
+echo "[frozen] ResearchQA n=8 ..."; ./ab_child_return.sh || echo "[warn] researchqa failed"
+
+COMMON_ENV; export BENCH=healthbench NUMEX=8 MCP_PORT=8043 OUT=$BASE/healthbench
+export HEALTHBENCH_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/healthbench_hard_repr.jsonl
+echo "[frozen] HealthBench n=8 ..."; ./ab_child_return.sh || echo "[warn] healthbench failed"
+
+COMMON_ENV; export BENCH=sqav2 NUMEX=8 MCP_PORT=8044 OUT=$BASE/sqav2
+export SQAV2_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/sqav2_cs100.jsonl
+echo "[frozen] sqav2 n=8 ..."; ./ab_child_return.sh || echo "[warn] sqav2 failed"
+
+echo "[frozen_baseline_v1] all four done -> $BASE"

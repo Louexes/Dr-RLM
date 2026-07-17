@@ -1,0 +1,12 @@
+{
+  "title": "Tinker API",
+  "pages": [
+    "overview",
+    "quickstart",
+    "architecture",
+    "multi_tenancy",
+    "cookbook",
+    "configuration",
+    "limitations"
+  ]
+}

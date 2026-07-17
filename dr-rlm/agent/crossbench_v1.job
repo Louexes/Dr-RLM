@@ -1,0 +1,40 @@
+#!/bin/bash
+# SLURM job — CROSS-BENCHMARK validation of the locked harness config.
+# Tests that the benchmark-neutral substrate (report-style structured contract + answer-state
+# nudge + de-coupled prompt: process in system_prompt.txt, output-shape in _TASK_FRAMING)
+# does NOT regress short-answer / safety benchmarks the way the old DRB-length-biased prompt
+# could: ResearchQA wants ~240-260 words; HealthBench wants scoped, safe, hedged answers.
+# Representative subsets, credit-frugal: ResearchQA n=12 (of the 49 stratified) and
+# HealthBench n=12 (of the 72 difficulty-weighted) ~= ~24 items x ~10 searches ~ 250 Serper.
+# SUBMIT ONLY AFTER structured_fixes_v5 validates the uncited-report fixes.
+#SBATCH --job-name=crossbench_v1
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=08:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/crossbench_v1_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/crossbench_v1_%j.err
+set -euo pipefail
+
+mkdir -p /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+
+# shared config (identical to the validated DRB setup, only BENCH/OUT vary)
+export ARMS=structured
+export DR_RLM_CAPTURE_LEDGER=1
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export TOKENIZER=Qwen/Qwen3-8B
+export NUMEX=12
+export MAX_DEPTH=1
+export SEARCH_BACKEND=web
+export MAX_TOOL_CALLS=200
+export MAX_CHILDREN=6
+export GRADE=1
+export SAVE_TRAJ=1
+
+echo "[job ${SLURM_JOB_ID:-local}] $(hostname) cross-benchmark: ResearchQA n=$NUMEX then HealthBench n=$NUMEX"
+
+BENCH=researchqa  OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/crossbench_v1/researchqa  ./ab_child_return.sh
+BENCH=healthbench OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/run

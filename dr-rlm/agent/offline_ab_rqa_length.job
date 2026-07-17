@@ -1,0 +1,50 @@
+#!/bin/bash
+# SLURM job — OFFLINE A/B: ResearchQA length compliance via REPL SELF-MEASUREMENT (n=8).
+# Problem: framing asks 240-260 words; the model writes ~500 (mean_len ~3024 chars live).
+# Treatment framing (via DR_RLM_TASK_FRAMING_JSON — no code edits): makes the word range a
+# HARD requirement and tells the model to MEASURE itself in the REPL
+# (len(answer["content"].split())) and revise before submitting — output-shape compliance as
+# a programmatic check, something only a REPL agent can do. Both arms: verification ON
+# (adopted config), same snapshot corpus.
+# Read: word-count distribution (primary), rubric coverage (must not crater).
+#SBATCH --job-name=offline_ab_rqa_length
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=05:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_rqa_length_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_rqa_length_%j.err
+set -euo pipefail
+
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+BASE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_ab_rqa_length
+
+COMMON_ENV() {
+  export ARMS=structured
+  export DR_RLM_CAPTURE_LEDGER=1
+  export MODEL=gemini-2.5-flash
+  export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+  export MODEL_API_KEY_ENV=GEMINI_API_KEY
+  export TOKENIZER=Qwen/Qwen3-8B
+  export BENCH=researchqa
+  export NUMEX=8
+  export MAX_DEPTH=1
+  export SEARCH_BACKEND=local_jsonl
+  export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/researchqa.jsonl
+  export MAX_TOOL_CALLS=200
+  export MAX_CHILDREN=6
+  export GRADE=1
+  export SAVE_TRAJ=1
+  export CITATION_VERIFY=1
+}
+
+COMMON_ENV; unset DR_RLM_TASK_FRAMING_JSON || true
+export OUT=$BASE/control
+echo "[ab] arm CONTROL (default 240-260w framing) ..."; ./ab_child_return.sh || echo "[warn] control failed"
+
+COMMON_ENV
+export DR_RLM_TASK_FRAMING_JSON='{"researchqa": "Answer the question completely and precisely in 240-260 words — this is a HARD requirement, not a suggestion. Before submitting, MEASURE your draft in the REPL with len(answer[\"content\"].split()) and revise until it is within 240-260; an answer outside the range loses points no matter how good its content is. Write one to three paragraphs (do not enumerate the facts), and support every statement with an in-line citation to a retrieved snippet."}'
+export OUT=$BASE/hardlimit
+echo "[ab] arm HARDLIMIT (REPL self-measured length) ..."; ./ab_child_return.sh || echo "[warn] hardlimit failed"
+
+echo "[offline_ab_rqa_length] done -> $BASE"

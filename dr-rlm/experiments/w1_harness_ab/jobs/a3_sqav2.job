@@ -1,0 +1,59 @@
+#!/bin/bash
+#SBATCH --job-name=w1_a3_sqav2
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=05:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a3_sqav2_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a3_sqav2_%j.err
+
+# W1 / Arm A3 on ScholarQA-CSv2 (all 100): GPT-5-mini FLAT in the DR-Tulu ReAct harness.
+# Same harness/flags as the A3 RQA/DRB run; only the benchmark differs. generate-dataset
+# already supports sqav2; SQAV2_LOCAL_PATH freezes the same 100 items every arm uses.
+set -euo pipefail
+REPO=/gpfs/home5/lgehringer/Dr-RLM
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+AGENT=$REPO/dr-tulu/agent
+W1=$REPO/drrlm
+OUT=$REPO/drrlm/runs/A3
+mkdir -p "$OUT" "$REPO/drrlm/runs/logs"
+
+ARM=A3
+N=final_run
+MCP_PORT=8057
+MODEL=gpt-5-mini
+OVERRIDES="use_browse_agent=true,browse_tool_name=jina,search_agent_max_tool_calls=10,search_agent_model_name=${MODEL},browse_agent_model_name=${MODEL},search_agent_temperature=1,browse_agent_temperature=1,tool_calling_mode=native,mcp_port=${MCP_PORT}"
+
+source "$VENV/bin/activate"
+export TOKENIZERS_PARALLELISM=false
+source "$REPO/drrlm/keys.sh"
+export SQAV2_LOCAL_PATH=$REPO/drrlm/data/subsets/sqav2_cs100.jsonl
+export GOOGLE_API_KEY="${GOOGLE_API_KEY:-${GEMINI_API_KEY:-}}"
+
+cd "$AGENT"
+
+MCP_PID=""
+cleanup() { echo "[cleanup] stopping MCP"; [[ -n "$MCP_PID" ]] && kill "$MCP_PID" 2>/dev/null || true; }
+trap cleanup EXIT
+
+echo "[mcp] launching ONLINE MCP backend on :$MCP_PORT"
+python -m dr_agent.mcp_backend.main --port $MCP_PORT > "$REPO/drrlm/runs/logs/${ARM}_sqa_mcp_${SLURM_JOB_ID:-local}.log" 2>&1 &
+MCP_PID=$!
+for i in $(seq 1 60); do
+  curl -sf "http://localhost:$MCP_PORT/health" >/dev/null 2>&1 && { echo "[mcp] ready after ~$((i*2))s"; break; }
+  sleep 2
+  kill -0 "$MCP_PID" 2>/dev/null || { echo "[FATAL] MCP died; see ${ARM}_sqa_mcp log"; exit 1; }
+done
+
+echo "[gen] ScholarQA-CSv2 (N=$N, $MODEL, native) ..."
+python workflows/auto_search_sft.py generate-dataset sqav2 \
+    --num-examples $N --max-concurrent 8 --batch-size 20 --use-cache \
+    --config workflows/auto_search_sft-oai.yaml \
+    --config-overrides "$OVERRIDES" \
+    --output "$OUT/sqav2.jsonl" < /dev/null
+
+echo "[grade] ScholarQA-CSv2 rubric coverage (sqa_cs_v2; astabench/inspect via uv) ..."
+{ python scripts/evaluate.py sqa_cs_v2 "$OUT/sqav2.jsonl" --save_path "$OUT/sqa_eval" 2>&1 | tee "$OUT/sqav2_score.txt"; } \
+    || echo "[warn] sqa grading failed — generation saved; grade later"
+
+echo "[done] A3 sqav2 outputs in $OUT"

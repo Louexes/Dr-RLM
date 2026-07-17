@@ -1,0 +1,40 @@
+#!/bin/bash
+# Re-grade the banked thinking-ON probe reports with a THINKING-OFF judge (fast, reliable —
+# the in-probe grade shared the thinking-ON endpoint, so every judge call emitted a <think>
+# block and stalled). Judge setting is independent of how reports were generated; thinking-off
+# is how we validated the judge and graded the 0.227 baseline. Reports already on disk.
+#SBATCH --job-name=grade_think
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=00:30:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/grade_think_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/grade_think_%j.err
+set -euo pipefail
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+MODEL=Qwen/Qwen3.5-4B; PORT=8003; GRADER_ALIAS=gpt-4.1-mini-2025-04-14
+RES=$DRRLM/runs/drtulu_thinkon_probe/researchqa.jsonl
+source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
+VLLM_LOG="$DRRLM/runs/logs/grade_think_vllm_${SLURM_JOB_ID:-local}.log"
+echo "[serve] Qwen3.5-4B THINKING-OFF judge -> $VLLM_LOG"
+vllm serve "$MODEL" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.85 --max-model-len 32768 --enforce-eager \
+  --default-chat-template-kwargs '{"enable_thinking": false}' \
+  --served-model-name "$MODEL" "$GRADER_ALIAS" > "$VLLM_LOG" 2>&1 &
+VLLM_PID=$!; trap 'kill $VLLM_PID 2>/dev/null || true' EXIT
+for s in $(seq 1 180); do
+  curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve] ready ~$((s*5))s"; break; }
+  sleep 5; kill -0 $VLLM_PID 2>/dev/null || { echo "[FATAL] vllm died"; tail -40 "$VLLM_LOG"; exit 1; }
+done
+cd "$AGENT"
+echo "[grade] researchqa coverage (thinking-off judge) on $(wc -l < "$RES") reports ..."
+OPENAI_BASE_URL="http://localhost:$PORT/v1" OPENAI_API_KEY=EMPTY \
+  python scripts/evaluate.py researchqa "$RES" 2>&1 | grep -viE "Coverage for|Expected 8|Questions:|Authlib|joserfc" | tail -15
+python - "$DRRLM/runs/drtulu_thinkon_probe/researchqa_eval_results.json" <<'PY'
+import json,sys,os
+f=sys.argv[1]
+if os.path.exists(f):
+    d=json.load(open(f)); print("THINKING-ON probe AGGREGATE coverage:", d.get("score") or d.get("metrics",{}).get("coverage"))
+PY
+echo "[done]"

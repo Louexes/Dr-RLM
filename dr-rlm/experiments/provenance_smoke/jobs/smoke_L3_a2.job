@@ -1,0 +1,93 @@
+#!/bin/bash
+# =============================================================================
+# (a2) WARM-START PHASE 2, RUBRIC-ONLY — clean re-run after (a) attempt 1 hit judge overload.
+#
+# (a) attempt 1 (job 24197936) CONFIRMED the warm-start mechanically works: citing persisted
+# at cites/kid ~1.5 (vs cold-start 0.15). BUT the grounding-aware reward fires a Gemini citation-
+# RECALL call per claim; the warm-started model cites densely => ~5-10x judge calls/step => Gemini
+# rate-limit bursts (429/503), 40-70% R==0 outage that contaminated R AND orphan% AND training.
+# (Direct Gemini probe = 6/6 OK, so it was burst-load, not quota.)
+#
+# FIX = rubric-only reward (DR_RLM_CITATION_REWARD unset) -> removes the per-claim recall calls,
+# back to v1-clean's PROVEN judge load (~18-30% outage at conc 8; we use conc 5 for margin).
+# This is now the CLEANEST possible Phase-2 test: v1-clean's exact reward/judge setup + the THREE
+# changes that define Phase 2 (full_R + rer_pernode + warm-start from step-24). Nothing else moves.
+#   SUCCESS = orphans stay low (<=~55%) + cites/kid stays high (>=~1.0) + rubric R rises/holds.
+#   FAILURE = orphans climb toward ~90% (full_R extinguishes citing).
+# Grounding-aware R is a FOLLOW-UP (needs a judge that tolerates the recall-call load — local judge
+# or lower concurrency). Record: docs/RL_TRAINING_LOG.md.
+# =============================================================================
+#SBATCH --job-name=smoke_L3_a2
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=4
+#SBATCH --cpus-per-task=64
+#SBATCH --time=06:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/smoke_L3_a2_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/smoke_L3_a2_%j.err
+set -euo pipefail
+
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+SKYRL=$DRRLM/rl/skyrl
+OUT=$DRRLM/runs/provenance_smoke
+mkdir -p "$OUT"
+export PATH="$HOME/.local/bin:$PATH"
+set +x; source "$DRRLM/keys.sh"; set -x
+export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt.txt
+
+export VLLM_USE_DEEP_GEMM=0
+export HF_HUB_OFFLINE=1
+export UV_CACHE_DIR=/scratch-shared/lgehringer/uv_cache
+export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticators('api.wandb.ai')[2])")
+
+# ---- held-constant judge: gemini-2.5-flash ----
+export JUDGE_API_KEY="$GEMINI_API_KEY"
+export JUDGE_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+export JUDGE_MODEL="gemini-2.5-flash"
+
+# ---- data / corpus / policy (MUST match v1-clean: Qwen3.5-4B, world_size_4 shards) ----
+export DATA_DIR=$DRRLM/data/poc_corpus
+export MODEL_PATH="Qwen/Qwen3.5-4B"
+export SEARCH_BACKEND=local_jsonl
+export SEARCH_CORPUS_PATH=$DATA_DIR/corpus.jsonl
+export NUM_ENGINES=1 TP_SIZE=4 TRAIN_GPUS=4
+export LOGGER=console
+
+# ---- evidence telemetry (orphan% clean: no shaping, RUBRIC-ONLY) ----
+export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_a2.jsonl"
+export DR_RLM_JUDGE_OUTAGE_GUARD=0.9
+# NB: DR_RLM_CITATION_REWARD intentionally UNSET -> rubric-only R (kills the per-claim recall calls
+# that overloaded the judge in attempt 1). R is pure rubric quality; provenance credit still uses
+# rubric-criteria support (ledger_support), so child citing-maintenance is unaffected.
+
+cd "$SKYRL"
+bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
+  generator.share_mode=ledger_support \
+  generator.root_reward_mode=full_R \
+  trainer.algorithm.advantage_estimator=rer_pernode \
+  generator.judge_max_concurrency=5 \
+  generator.max_recursion_depth=1 \
+  generator.max_children_per_node=4 \
+  generator.child_return_mode=structured \
+  generator.max_turns=10 \
+  generator.n_samples_per_prompt=4 \
+  generator.chat_template_kwargs.enable_thinking=false \
+  generator.sampling_params.max_generate_length=4096 \
+  generator.eval_sampling_params.max_generate_length=4096 \
+  trainer.policy.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
+  trainer.ref.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
+  trainer.resume_mode=from_path \
+  trainer.resume_path=/scratch-shared/lgehringer/smoke_v1clean_ckpts/global_step_24 \
+  trainer.epochs=5 \
+  trainer.eval_before_train=false \
+  trainer.eval_interval=1000 \
+  trainer.ckpt_interval=5 \
+  trainer.max_ckpts_to_keep=2 \
+  trainer.micro_forward_batch_size_per_gpu=1 \
+  trainer.micro_train_batch_size_per_gpu=1 \
+  trainer.logger="['console','wandb']" \
+  trainer.run_name="smoke_L3_a2" \
+  trainer.log_path="$OUT/a2_logs" \
+  trainer.ckpt_path="/scratch-shared/lgehringer/a2_ckpts" \
+  trainer.export_path="/scratch-shared/lgehringer/a2_exports"
+
+echo "[smoke_L3_a2] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"

@@ -1,0 +1,73 @@
+#!/bin/bash
+# Predictive-entropy probe for the SFT RECIPE SWEEP — the RL-stability axis the DRB table misses.
+# H = -Σ p log p over the model's next-token dist, averaged over unmasked assistant positions, on the
+# same 40 held-out + 40 train recursive trajectories as the original 1/2/3ep decision. Reports each
+# config/epoch's held-out H as % of base. REFERENCE (docs/paper_assets/sft_overfit_vs_behavior_note.md):
+# base=0.501, 2ep-canonical=0.378 (75% = the stable RL init we used), 3ep=0.277 (55% = collapsed, bad init).
+# Loads text /policy weights directly (no graft). ~8 min/ckpt.
+#SBATCH --job-name=sweep_ent_rec
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
+#SBATCH --time=02:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sweep_entropy_recipe_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sweep_entropy_recipe_%j.out
+set -euo pipefail
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export HF_HOME=/scratch-shared/lgehringer/hf_cache HF_HUB_OFFLINE=1 TOKENIZERS_PARALLELISM=false
+env -u VIRTUAL_ENV rl/skyrl/.venv/bin/python - <<'PY'
+import json, hashlib, random, torch, sys, statistics as st, os
+sys.path.insert(0,"rl/skyrl")
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from skyrl.train.sft_trainer import tokenize_chat_example
+from skyrl.train.config.sft_config import TrainOnWhat
+random.seed(42)
+def h(r): return hashlib.md5(json.dumps(r["conversations"],sort_keys=True).encode()).hexdigest()
+prim=[json.loads(l) for l in open("data/sft/primary/dr_rlm_recursive_primary.jsonl")]
+full=[json.loads(l) for l in open("data/sft/ablation/dr_rlm_recursive_full.jsonl")]
+pset={h(r) for r in prim}; held=[r for r in full if h(r) not in pset]
+def sample(rows,k):
+    root=[r for r in rows if r.get("_node")=="root"]; child=[r for r in rows if r.get("_node")=="child"]
+    random.shuffle(root); random.shuffle(child); return root[:k//2]+child[:k//2]
+held_s=sample(held,40); train_s=sample(prim,40)
+tok=AutoTokenizer.from_pretrained("Qwen/Qwen3.5-4B")
+def mean_entropy(model,rows):
+    hs=[]
+    for r in rows:
+        o=tokenize_chat_example({"conversations":r["conversations"]},tok,max_length=32768,
+            messages_key="conversations",train_on_what=TrainOnWhat.ALL_ASSISTANT_MESSAGES)
+        ids,lm,na=o["input_ids"],o["loss_mask"],o["num_actions"]
+        if sum(lm)==0: continue
+        f=torch.zeros(len(ids)); f[-na:]=torch.tensor(lm,dtype=torch.float32)
+        pos=[t for t in range(len(ids)-1) if f[t+1]>0]
+        if not pos: continue
+        x=torch.tensor([ids],device="cuda")
+        with torch.no_grad():
+            logits=model(x).logits[0]
+            sel=logits[torch.tensor(pos,device="cuda")].float()
+            logp=torch.log_softmax(sel,dim=-1)
+            ent=-(logp.exp()*logp).sum(-1)
+        hs.append(ent.mean().item())
+    return st.mean(hs)
+
+SW="/scratch-shared/lgehringer/ckpts/sft_recipe_sweep"
+CKPTS=[("A_e2","A_moredata",112),("A_e3","A_moredata",168),("A_e4","A_moredata",224),
+       ("B_e2","B_lowlr",68),("B_e3","B_lowlr",102),("B_e4","B_lowlr",136),
+       ("C_e2","C_wd",68),("C_e3","C_wd",102),("C_e4","C_wd",136)]
+base_m=AutoModelForCausalLM.from_pretrained("Qwen/Qwen3.5-4B",dtype=torch.bfloat16,device_map="cuda").eval()
+BASE=mean_entropy(base_m,held_s); BASE_TR=mean_entropy(base_m,train_s)
+del base_m; torch.cuda.empty_cache()
+print("\n=== ENTROPY (RL-stability). ref: 2ep-canonical=75% of base=STABLE, 3ep=55%=COLLAPSED ===")
+print(f"{'model':10}{'heldH':>8}{'%base':>8}{'trainH':>8}  flag")
+print(f"{'base':10}{BASE:>8.3f}{'100%':>8}{BASE_TR:>8.3f}")
+for lbl,cfg,step in CKPTS:
+    p=f"{SW}/{cfg}/hf/global_step_{step}/policy"
+    if not os.path.exists(os.path.join(p,"config.json")): print(f"{lbl:10}  (missing {p})"); continue
+    m=AutoModelForCausalLM.from_pretrained(p,dtype=torch.bfloat16,device_map="cuda").eval()
+    hh=mean_entropy(m,held_s); ht=mean_entropy(m,train_s); pct=100*hh/BASE
+    flag="STABLE" if pct>=70 else ("RISK" if pct>=58 else "COLLAPSE")
+    print(f"{lbl:10}{hh:>8.3f}{pct:>7.0f}%{ht:>8.3f}  {flag}")
+    del m; torch.cuda.empty_cache()
+print("\n[done] combine with DRB-24 table: a good init = beats RL-init on DRB AND entropy STABLE (>=70% base)")
+PY

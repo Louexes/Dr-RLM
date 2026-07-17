@@ -1,0 +1,120 @@
+#!/bin/bash
+# =============================================================================
+# RECURSION GATE — DR-Tulu-8B eval-only pass through the training stack.
+#
+# Question: does the (flat-trained, Qwen3-based) DR-Tulu-8B warm start DELEGATE
+# (rlm_query) under the DrRlmEnv orchestrator prompt? Per-node credit only
+# matters if trees actually have children. This is also the first end-to-end
+# GPU shakeout of the SkyRL dr_rlm stack (engine init, env, generator).
+#
+# Reads:  data/poc_corpus/{train,validation}.parquet + corpus.jsonl (snapshot)
+# Writes: telemetry jsonl (one line per rollout: nodes, depths, cites) ->
+#         recursion rate = frac(trees with >1 node). Judge = gemini-2.5-flash
+#         (same judge as the validated POC) so report rewards are also sane.
+# GATE:   recursion rate >= ~0.3 -> proceed to smoke_L3/L1 as-is;
+#         ~0 -> light SFT on the POC trees first (sft/gen_recursive_sft.py).
+# =============================================================================
+#SBATCH --job-name=rgate_qwen35
+#SBATCH --partition=gpu_a100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=18
+#SBATCH --time=02:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rgate_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rgate_%j.err
+set -euo pipefail
+
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+SKYRL=$DRRLM/rl/skyrl
+DATA_DIR=$DRRLM/data/poc_corpus
+OUT=$DRRLM/runs/provenance_smoke
+mkdir -p "$OUT"
+export PATH="$HOME/.local/bin:$PATH"
+set +x; source "$DRRLM/keys.sh"; set -x
+# Ray workers do not inherit the shell env NOR see relative paths into dr-rlm/ (the
+# working dir is repackaged to scratch): give prompts.py the ABSOLUTE canonical prompt.
+export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt.txt
+
+# W&B tracking: skyrl asserts on WANDB_API_KEY (and forwards it to Ray workers);
+# derive it from the existing `wandb login` credential in ~/.netrc.
+export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticators('api.wandb.ai')[2])")
+
+# Gemini judge (same as POC); JudgeConfig passes the model id through unchanged.
+export JUDGE_API_KEY="$GEMINI_API_KEY"
+
+# Evidence telemetry (opt-in hook in dr_rlm_generator; flat path logs per-node rows).
+export DR_RLM_CREDIT_METRICS_PATH="$OUT/rgate_telemetry.jsonl"
+
+cd "$SKYRL"
+
+# ---- pre-flight: bare-vLLM generation sanity (catches env/version-mismatch gibberish
+#      in ~5 min instead of after a full eval). transformers pin REMOVED: the old
+#      `--with transformers==5.4.0` violated pyproject's >=5.6.1 floor and made vLLM
+#      mis-parse the model config -> pure-noise generations (job 23648361).
+uv run --extra fsdp --python 3.12 - <<'PYEOF'
+from vllm import LLM, SamplingParams
+llm = LLM(model="Qwen/Qwen3.5-4B", gpu_memory_utilization=0.85, max_model_len=4096)
+out = llm.chat([{"role": "user", "content": "In one sentence, what is photosynthesis?"}],
+               SamplingParams(temperature=0.0, max_tokens=60))
+text = out[0].outputs[0].text
+print("[preflight] sample:", text[:200])
+ascii_frac = sum(c.isascii() for c in text) / max(len(text), 1)
+print(f"[preflight] ascii_frac={ascii_frac:.2f}")
+assert ascii_frac > 0.8 and len(text.split()) > 3, "PREFLIGHT FAILED: generation looks like noise"
+print("[preflight] OK")
+PYEOF
+
+uv run --extra fsdp --python 3.12 -m examples.train.dr_rlm.main_dr_rlm_eval \
+  trainer.placement.colocate_all=false \
+  data.train_data="['$DATA_DIR/train.parquet']" \
+  data.val_data="['$DATA_DIR/train.parquet','$DATA_DIR/validation.parquet']" \
+  environment.env_class=dr_rlm \
+  generator.step_wise_trajectories=true \
+  generator.batched=false \
+  generator.per_node_credit=false \
+  generator.enable_child_agents=true \
+  generator.train_child_trajectories=true \
+  generator.max_recursion_depth=1 \
+  generator.max_children_per_node=4 \
+  generator.child_return_mode=structured \
+  generator.max_turns=10 \
+  generator.judge_model="gemini-2.5-flash" \
+  generator.judge_base_url="https://generativelanguage.googleapis.com/v1beta/openai" \
+  generator.judge_api_key_env=JUDGE_API_KEY \
+  generator.search_backend=local_jsonl \
+  generator.search_corpus_path="$DATA_DIR/corpus.jsonl" \
+  trainer.policy.model.path="Qwen/Qwen3.5-4B" \
+  generator.inference_engine.num_engines=1 \
+  generator.inference_engine.tensor_parallel_size=1 \
+  generator.inference_engine.backend=vllm \
+  generator.inference_engine.run_engines_locally=true \
+  generator.inference_engine.async_engine=true \
+  generator.inference_engine.gpu_memory_utilization=0.85 \
+  generator.inference_engine.enforce_eager=false \
+  generator.inference_engine.engine_init_kwargs.language_model_only=true \
+  generator.inference_engine.language_model_only=true \
+  generator.max_input_length=32768 \
+  trainer.max_prompt_length=32768 \
+  generator.sampling_params.max_generate_length=4096 \
+  generator.eval_sampling_params.max_generate_length=4096 \
+  generator.sampling_params.temperature=1.0 \
+  generator.sampling_params.top_p=1.0 \
+  generator.chat_template_kwargs.enable_thinking=false \
+  trainer.eval_batch_size=8 \
+  trainer.dump_eval_results=true \
+  trainer.logger="['console','wandb']" \
+  trainer.project_name="dr-rlm" \
+  trainer.run_name="rgate_qwen35_4b" \
+  trainer.log_path="$OUT/rgate_logs" \
+  trainer.export_path="$OUT/rgate_exports"
+
+# ---- gate summary from telemetry ----
+python3 - <<'EOF'
+import json
+rows=[json.loads(l) for l in open("/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/provenance_smoke/rgate_telemetry.jsonl")]
+nodes=[n for r in rows for n in (r.get("nodes") or [])]
+roots=[n for n in nodes if n.get("depth",0)==0]; kids=[n for n in nodes if n.get("depth",0)>0]
+print(f"[GATE] roots={len(roots)} children={len(kids)} children_per_root={len(kids)/max(len(roots),1):.2f} "
+      f"frac_roots_answering={sum(1 for n in roots if n.get('ans_len',0)>200)/max(len(roots),1):.2f} "
+      f"frac_nodes_citing={sum(1 for n in nodes if n.get('n_cited',0)>0)/max(len(nodes),1):.2f}")
+EOF
+echo "[rgate] done"

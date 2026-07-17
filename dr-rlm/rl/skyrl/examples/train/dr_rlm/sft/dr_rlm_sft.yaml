@@ -1,0 +1,72 @@
+# DR-RLM recursive cold-start SFT (LLaMA-Factory).
+#
+# PLAN OF RECORD (docs/SFT_PLAN_2026-07-03.md): SFT cold start from base Qwen3.5-4B on
+# teacher trajectories (local Qwen3.6-27B driven through our harness over the frozen
+# corpus, rejection-sampled), then RL from this checkpoint. Trajectories produced by
+# gen_recursive_sft.py on the frozen SFT prompt manifest
+# (data/subsets/sft_prompts_manifest.json — held out from RL + eval).
+#
+# Structure mirrors dr-tulu/sft/llama-factory/train/qwen3-8B-sft-final.yaml; the DR-RLM
+# changes are: a LOCAL dataset key (dr_rlm_recursive_sft, registered via
+# dataset_info_entry.json) and span masking of BOTH tool_output and subagent_output so
+# the loss is taken only on the policy's own reasoning + the final cited report.
+
+### model
+# Cold-start from the base model (same base as the RL arms and the flat baseline).
+model_name_or_path: Qwen/Qwen3.5-4B
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: full
+deepspeed: examples/deepspeed/ds_z3_config.json  # choices: [ds_z0_config.json, ds_z2_config.json, ds_z3_config.json]
+
+### dataset
+# LOCAL sharegpt dataset; register the dataset_info_entry.json under this key first
+# (run_sft.sh does this) so file_name points at the generated jsonl.
+dataset: dr_rlm_recursive_sft
+template: qwen3
+# 32768 (not dr-tulu's 16384): teacher-probe trees showed ~40% of nodes >16k tok
+# (roots median ~16k, p90 ~24k). Truncation would cut the final cited report — the
+# exact behavior SFT must teach. Matches the 32k serving window the student uses in
+# RL/eval. Rows still over 32k are DROPPED before training, never truncated.
+cutoff_len: 32768
+overwrite_cache: true
+preprocessing_num_workers: 16
+dataloader_num_workers: 4
+# Span masking: mask BOTH the injected retrieval snippets (<tool_output>...) AND the
+# delegated sub-agent answers (<subagent_output>...), so the model is supervised only on
+# its own think/code + final cited report — never on text it did not generate.
+use_span_masking: true
+mask_span_types: "tool_output,subagent_output"
+
+### output
+output_dir: ckpts/dr_rlm-recursive-sft
+logging_steps: 5
+save_strategy: "no"
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: true
+report_to: wandb
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 4.0e-5
+# 3 (not dr-tulu's 5): small SFT set — over-epoching risks entropy collapse that
+# destabilizes downstream GRPO (alphaXiv RLM blog; Rajani et al. "Scalpel vs. Hammer").
+num_train_epochs: 3
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+weight_decay: 0.00
+
+### eval
+# eval_dataset: alpaca_en_demo
+# val_size: 0.1
+# per_device_eval_batch_size: 1
+# eval_strategy: steps
+# eval_steps: 500

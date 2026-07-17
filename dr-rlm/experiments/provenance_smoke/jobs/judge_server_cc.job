@@ -1,0 +1,44 @@
+#!/bin/bash
+# Local RL judge server — replaces Gemini for RL training rewards (user decision 2026-07-06).
+# Serves Qwen3.5-4B thinking-OFF (locked rule: the judge is ALWAYS thinking-off) on 1 GPU and
+# writes its endpoint to a rendezvous file the training job waits on. Same judge model as eval
+# (train≡eval consistency now extends to the reward model). Idles serving until walltime or scancel.
+#SBATCH --job-name=rl_judge_cc
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=11:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_judge_cc_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_judge_cc_%j.err
+
+set -euo pipefail
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+ENDPOINT_FILE=$DRRLM/runs/provenance_smoke/rl_judge_cc_endpoint.txt
+PORT=8020
+JUDGE_NAME=rl-judge-qwen35-4b
+MODEL=/scratch-shared/lgehringer/hf_cache/hub/models--Qwen--Qwen3.5-4B/snapshots/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+
+source "$VENV/bin/activate"
+export HF_HOME=/scratch-shared/lgehringer/hf_cache HF_HUB_OFFLINE=1 VLLM_USE_DEEP_GEMM=0
+rm -f "$ENDPOINT_FILE"
+
+vllm serve "$MODEL" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.90 --max-model-len 32768 --max-num-seqs 32 \
+  --default-chat-template-kwargs '{"enable_thinking": false}' \
+  --served-model-name "$JUDGE_NAME" > "$DRRLM/runs/logs/rl_judge_cc_vllm_${SLURM_JOB_ID}.log" 2>&1 &
+PID=$!
+trap 'kill $PID 2>/dev/null || true; rm -f "$ENDPOINT_FILE"' EXIT
+
+for s in $(seq 1 300); do
+  if curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1; then
+    echo "http://$(hostname):$PORT/v1" > "$ENDPOINT_FILE"
+    echo "[rl_judge] ready after ~$((s*5))s -> $(cat $ENDPOINT_FILE) (model=$JUDGE_NAME)"
+    break
+  fi
+  sleep 5
+  kill -0 $PID 2>/dev/null || { echo "[FATAL] judge vllm died"; tail -40 "$DRRLM/runs/logs/rl_judge_cc_vllm_${SLURM_JOB_ID}.log"; exit 1; }
+done
+[ -f "$ENDPOINT_FILE" ] || { echo "[FATAL] judge never ready"; exit 1; }
+
+wait $PID

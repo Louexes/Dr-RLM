@@ -1,0 +1,110 @@
+#!/bin/bash
+# ============================================================================
+# SFT TEACHER PROBE — Qwen3.6-27B recursion gate (SFT_PLAN_2026-07-03.md Step 0.3).
+# Question: does a LOCAL Qwen3.6-27B recurse in our harness? Same 12-item decomposable
+# sqav2 probe set that scored gpt-5-mini 100% / geminis 0-25% (decisions.md 2026-06-05).
+# GATE: recursion rate >=50% -> proceed with 27B as SFT teacher (supersedes the
+# "GPT-5-class required" decision). <50%: retry with a delegation-nudged teacher-only
+# prompt; <20-30%: escalate (bigger local teacher / gpt-5-mini fallback).
+# Config mirrors the locked eval harness (depth=1, turns=10, children=10, structured,
+# bm25s frozen corpus), THINKING-ON, but temperature 0.7 = gen_recursive_sft's default
+# (this probe approximates Step-1 teacher generation, not the locked eval).
+# PHASE 2 (non-gating): gen_recursive_sft.py serialization smoke on 2 manifest prompts.
+# ============================================================================
+#SBATCH --job-name=sft_teacher_probe
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=2
+#SBATCH --cpus-per-task=32
+#SBATCH --time=03:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sft_tprobe_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sft_tprobe_%j.err
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+MODEL_DIR=/scratch-shared/lgehringer/models/Qwen3.6-27B
+ALIAS=Qwen/Qwen3.6-27B; PORT=8006
+FROZEN=$DRRLM/data/frozen_corpus; OUT=$DRRLM/runs/sft_teacher_probe; TASK=sqav2; SHARDS=4
+JOBID=${SLURM_JOB_ID:-local}
+mkdir -p "$OUT" "$DRRLM/runs/logs"; rm -f "$OUT"/shard_*.jsonl "$OUT/${TASK}.jsonl"
+source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
+export VLLM_USE_DEEP_GEMM=0 HF_HUB_OFFLINE=1
+export DR_RLM_CAPTURE_LEDGER=1   # tool_calls/snippet capture (EXPERIMENT_LOG row 136 fix)
+export SQAV2_LOCAL_PATH=$DRRLM/data/subsets/sqav2_gemini_recprobe12.jsonl
+export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt_thinkon.txt
+
+CUR_PID=""; cleanup(){ [ -n "$CUR_PID" ] && kill "$CUR_PID" 2>/dev/null || true; }; trap cleanup EXIT
+LOG="$DRRLM/runs/logs/sft_tprobe_vllm_${JOBID}.log"
+echo "[serve] vllm $MODEL_DIR (alias $ALIAS) TP=2 thinking-ON -> $LOG"
+# max-model-len 131072 (native 262k; hybrid linear-attention -> cheap KV): the probe's
+# wide-fanout roots exceeded 32k input (job 24406972: 24.5k prompt + 8k completion -> 400s
+# -> dead roots -> EMPTY reports). 32k silently biased the gate against recursive items.
+vllm serve "$MODEL_DIR" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 2 \
+  --gpu-memory-utilization 0.90 --max-model-len 131072 --max-num-seqs 32 \
+  --default-chat-template-kwargs '{"enable_thinking": true}' \
+  --served-model-name "$ALIAS" > "$LOG" 2>&1 &
+CUR_PID=$!
+for s in $(seq 1 240); do
+  curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve] ready ~$((s*5))s"; break; }
+  sleep 5; kill -0 "$CUR_PID" 2>/dev/null || { echo "[FATAL] vllm died"; tail -40 "$LOG"; exit 1; }
+  [ "$s" -eq 240 ] && { echo "[FATAL] vllm never ready"; exit 1; }
+done
+
+# --- PHASE 1 (GATE): 12-item recursion probe through the unified driver ---
+GEN=$DRRLM/agent/generate.py; cd "$AGENT"
+COMMON="--driver new --benchmark $TASK --model $ALIAS --tokenizer-path $MODEL_DIR \
+  --base-url http://localhost:$PORT/v1 --api-key-env OPENAI_API_KEY \
+  --max-recursion-depth 1 --max-iterations 10 --max-completion-tokens 8192 \
+  --max-tool-calls 80 --max-children 10 --child-return-mode structured \
+  --temperature 0.7 --top-p 1.0 --sampling-top-k -1 --min-p 0.0 --presence-penalty 0.0 \
+  --search-backend bm25s --search-corpus-path $FROZEN/corpus.jsonl --search-index-path $FROZEN/bm25s_index \
+  --abort-after-dead-items 1000 --num-examples 12"
+pids=()
+for i in $(seq 0 $((SHARDS-1))); do
+  python "$GEN" $COMMON --num-shards "$SHARDS" --shard "$i" \
+    --output "$OUT/shard_${i}.jsonl" --save-trajectories "$OUT/traj_${i}" \
+    > "$OUT/shard_${i}.log" 2>&1 < /dev/null &
+  pids+=($!)
+done
+fail=0; for p in "${pids[@]}"; do wait "$p" || fail=$((fail+1)); done
+cat "$OUT"/shard_*.jsonl > "$OUT/${TASK}.jsonl" 2>/dev/null || true
+echo "[gen] done ($fail shard(s) nonzero). rows: $(wc -l < "$OUT/${TASK}.jsonl" 2>/dev/null)"
+
+echo; echo "=== GATE: recursion / finalization / citing ==="
+python - "$OUT/${TASK}.jsonl" <<'PY'
+import json, sys, re
+rows = [json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+n = len(rows)
+rec = fin = cited = 0
+widths = []
+for r in rows:
+    aod = r.get("additional_output_data") or {}
+    t = (aod.get("recursion") or {})
+    n_sub = t.get("n_subagents") or 0
+    rec += 1 if n_sub > 0 else 0
+    widths.append(n_sub)
+    resp = (r.get("final_response") or "")
+    fin += 1 if resp.strip() else 0
+    cited += 1 if re.search(r"<cite\s", resp) else 0
+print(f"items={n} recursed={rec} ({rec/max(n,1):.0%})  finalized={fin} ({fin/max(n,1):.0%})  reports_with_cites={cited}")
+print(f"sub-agents per item: {widths}")
+print("GATE >=50% recursion:", "PASS" if n and rec/n >= 0.5 else "FAIL")
+PY
+python "$DRRLM/analysis/behavioral_metrics.py" --run "qwen36_27b_probe:$OUT/${TASK}.jsonl" \
+  --outdir "$OUT" --stem teacher_probe_metrics || true
+
+# --- PHASE 2 (non-gating): gen_recursive_sft.py serialization smoke, 2 prompts ---
+echo; echo "=== serialization smoke (gen_recursive_sft.py, threshold 0, judge absent) ==="
+cd "$DRRLM/rl/skyrl"
+python examples/train/dr_rlm/sft/gen_recursive_sft.py \
+  --prompts "$DRRLM/data/subsets/sft_probe_smoke3.jsonl" \
+  --out_jsonl "$OUT/smoke_sharegpt.jsonl" \
+  --limit 2 --n_samples 1 --threshold 0.0 --max_depth 2 \
+  --model "$ALIAS" --base_url "http://localhost:$PORT/v1" \
+  --search_backend bm25s --search_corpus_path "$FROZEN/corpus.jsonl" \
+  --search_index_path "$FROZEN/bm25s_index" \
+  > "$OUT/smoke.log" 2>&1 \
+  && echo "smoke OK: $(wc -l < "$OUT/smoke_sharegpt.jsonl") sharegpt rows" \
+  || { echo "smoke FAILED (non-gating) — tail of log:"; tail -20 "$OUT/smoke.log"; }
+
+echo "[probe] complete."

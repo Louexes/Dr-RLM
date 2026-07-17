@@ -1,0 +1,52 @@
+#!/bin/bash
+# SLURM job — OFFLINE A/B: check_citations() verdict-oracle REPL tool (DRB n=16, single arm).
+# V2 of agent-side citation verification, redesigned against the three self_verify failure
+# modes (runs/offline_ab_selfverify): root skip-loophole (tool checks child-inherited entries
+# via the shared ledger), programmatic claim construction (prompt forbids it), silent
+# over-pruning (repair-first semantics + printed audit + cite-generously framing). The tool
+# returns verdicts only — the agent decides drop/re-point/rewrite, so verification stays
+# inside the agent's own budget/trajectory (fair vs DR-Tulu when both get the same tool)
+# and is RL-learnable.
+# Compare against (same corpus, same n):
+#   control (no verification):     valid_rate 0.407, valid cites/article 4.58, RACE 0.352
+#   harness verify (upper bound):  valid_rate 0.870, valid cites/article 4.44, RACE flat
+#   prompted self-verify (V1):     valid_rate 0.611, valid cites/article 2.00, RACE 0.301
+# Read: valid_rate, valid cites/article (over-pruning), RACE (scaffolding tax), tool-call
+# telemetry (check_citations_tool stats in trajectory node records: compliance incl. ROOTS).
+#SBATCH --job-name=offline_ab_checktool_v3
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=04:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_checktool_v3_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/offline_ab_checktool_v3_%j.err
+set -euo pipefail
+
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+BASE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_ab_checktool_v3
+
+export ARMS=structured
+export DR_RLM_CAPTURE_LEDGER=1
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export TOKENIZER=Qwen/Qwen3-8B
+export BENCH=deep_research_bench
+export NUMEX=16
+export MAX_DEPTH=1
+export SEARCH_BACKEND=local_jsonl
+export SEARCH_CORPUS_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/offline_corpus/drb.jsonl
+export MAX_TOOL_CALLS=200
+export MAX_CHILDREN=6
+export GRADE=1
+export SAVE_TRAJ=1
+
+# The treatment: verdict-oracle tool + its prompt variant; harness verification OFF.
+export CHECK_TOOL=1
+export CITATION_VERIFY=0
+export DR_RLM_PROMPT_FILE=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/prompts/variants/check_tool_v3.txt
+export OUT=$BASE/checktool_v3
+
+echo "[ab] arm CHECK-TOOL-V3 (mechanical two-line recipe, no judgment) ..."
+./ab_child_return.sh || echo "[warn] checktool arm failed"
+echo "[offline_ab_checktool_v3] done -> $BASE"

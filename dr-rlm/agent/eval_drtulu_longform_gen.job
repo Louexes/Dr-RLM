@@ -1,0 +1,86 @@
+#!/bin/bash
+# ============================================================================
+# DR-Tulu long-form GEN (gen-only, off-GPU Gemini grade later) — HB + DRB + SQA.
+# One serve, three benchmarks, THINKING-ON. Model env-overridable so the SAME
+# file serves untrained / SFT / RL columns. Config identical to the untrained
+# DR-Tulu long-form jobs (same OV, same subsets, same N) for a fair delta.
+#   grade after (off-GPU, ~0 SBU): HB=evaluate.py gemini-2.5-flash,
+#   DRB=run_eval.py RACE 2.5-pro/FACT 2.5-flash, SQA=sqa_eval/run_eval.py gemini-2.5-flash.
+# ============================================================================
+#SBATCH --job-name=drtulu_lf_gen
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --time=04:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/drtulu_lf_gen_%j.out
+set -euo pipefail
+
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+GEN_MODEL_PATH=${GEN_MODEL_PATH:-Qwen/Qwen3.5-4B}   # serve path (base HF id or local grafted ckpt)
+SERVED_NAME=${SERVED_NAME:-Qwen/Qwen3.5-4B}          # API / served-model-name
+TOKENIZER=${TOKENIZER:-Qwen/Qwen3.5-4B}
+PORT=${PORT:-8013}
+FROZEN=$DRRLM/data/frozen_corpus; OUT=${OUT:-$DRRLM/runs/drtulu_untrained_thinkon}
+JOBID=${SLURM_JOB_ID:-local}
+mkdir -p "$OUT" "$DRRLM/runs/logs"
+source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
+export HEALTHBENCH_LOCAL_PATH=$DRRLM/data/subsets/healthbench_strat120.jsonl
+export DRB_LOCAL_PATH=$DRRLM/data/subsets/drb_en50.jsonl
+export SQAV2_LOCAL_PATH=$DRRLM/data/subsets/sqav2_cs100.jsonl
+
+CUR_PID=""; cleanup(){ [ -n "$CUR_PID" ] && kill "$CUR_PID" 2>/dev/null || true; }; trap cleanup EXIT
+serve(){
+  local log="$DRRLM/runs/logs/drtulu_lf_vllm_${JOBID}.log"
+  echo "[serve] vllm $GEN_MODEL_PATH (name=$SERVED_NAME) enable_thinking=true -> $log"
+  vllm serve "$GEN_MODEL_PATH" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.85 --max-model-len 32768 --enforce-eager \
+    --default-chat-template-kwargs '{"enable_thinking": true}' \
+    --served-model-name "$SERVED_NAME" > "$log" 2>&1 &
+  CUR_PID=$!
+  for s in $(seq 1 240); do
+    curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve] ready ~$((s*5))s"; return 0; }
+    sleep 5; kill -0 "$CUR_PID" 2>/dev/null || { echo "[FATAL] vllm died"; tail -40 "$log"; exit 1; }
+  done; echo "[FATAL] vllm never ready"; exit 1
+}
+
+serve
+OV="search_tool_name=bm25s,browse_tool_name=bm25s"
+OV="$OV,bm25s_index_path=$FROZEN/bm25s_index,bm25s_corpus_path=$FROZEN/corpus.jsonl"
+OV="$OV,search_agent_base_url=http://localhost:$PORT/v1"
+OV="$OV,search_agent_model_name=$SERVED_NAME,search_agent_tokenizer_name=$TOKENIZER"
+OV="$OV,search_agent_temperature=1.0,search_agent_max_tokens=8192"
+OV="$OV,search_agent_max_tool_calls=12,number_documents_to_search=10"
+OV="$OV,tool_calling_mode=parser,use_browse_agent=false"
+cd "$AGENT"
+
+# (task, N) — same subsets/N as the untrained DR-Tulu long-form anchors.
+for pair in "healthbench:120" "deep_research_bench:50" "sqav2:100"; do
+  TASK=${pair%%:*}; N=${pair##*:}
+  echo; echo "########## GEN $TASK (DR-Tulu ReAct, thinking-ON, N=$N) ##########"
+  rm -f "$OUT/${TASK}.jsonl"
+  python "workflows/auto_search_sft.py" generate-dataset "$TASK" \
+    --num-examples "$N" --max-concurrent 8 --batch-size 8 --use-cache \
+    --config "workflows/auto_search_sft.yaml" --config-overrides "$OV" \
+    --output "$OUT/${TASK}.jsonl" < /dev/null || echo "[WARN] $TASK gen returned nonzero"
+  # health: non-empty rate + real searches (fail-loud, don't silently bank garbage)
+  python - "$OUT/${TASK}.jsonl" <<'PY'
+import json,sys
+rows=[json.loads(l) for l in open(sys.argv[1]) if l.strip()]
+ne=sum(1 for r in rows if (r.get("final_response") or "").strip())
+srch=0
+def walk(o):
+    if isinstance(o,dict):
+        for k,v in o.items():
+            yield (k,v);
+            for z in walk(v): yield z
+    elif isinstance(o,list):
+        for v in o:
+            for z in walk(v): yield z
+for r in rows:
+    for k,v in walk(r.get("full_traces") or {}):
+        if k=="tool_call_count" and isinstance(v,int): srch+=v
+print(f"[health:{sys.argv[1].split('/')[-1]}] rows={len(rows)} non-empty={ne} ({100*ne//max(1,len(rows))}%) total-searches={srch}")
+PY
+done
+echo; echo "[done] DR-Tulu long-form reports BANKED (gen-only). Grade off-GPU next."

@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=w1_a2_rqa
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=03:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2_rqa_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2_rqa_%j.err
+
+# W1 / Arm A2 FULL — ResearchQA only (gpt-5-mini in rlm/ recursive harness).
+# Split from DRB so each job stays well under the time limit + they run in parallel.
+# Per-item guards on (item_timeout + tool budget) so no item runs away. Resumes by example_id.
+set -euo pipefail
+export ARM=A2
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/A2
+export BENCH=researchqa
+export MCP_PORT=8040
+export MODEL=gpt-5-mini
+export MAX_DEPTH=${MAX_DEPTH:-5}
+export MAX_ITERS=${MAX_ITERS:-12}
+export ITEM_TIMEOUT=${ITEM_TIMEOUT:-900}
+export MAX_TOOL_CALLS=${MAX_TOOL_CALLS:-80}
+export NUM_SHARDS=${NUM_SHARDS:-6}  # 6 parallel shard processes (clean per-item instrumentation)
+export NUMEX=                       # all of the RQA subset (49)
+export GRADE=1
+bash /gpfs/home5/lgehringer/Dr-RLM/drrlm/agent/run.sh

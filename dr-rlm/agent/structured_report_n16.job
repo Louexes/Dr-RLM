@@ -1,0 +1,39 @@
+#!/bin/bash
+# SLURM job — structured REPORT-style + per-turn answer-state NUDGE, n=16.
+# Builds on "B" (runs/structured_report_v4, RACE 0.206 / FACT 0.564 / 2-of-8 collapsed).
+# Two changes vs B:
+#   1. _get_user_prompt now surfaces the live `answer["content"]` state each turn — kills the
+#      "I already submitted" hallucination that left id 55 empty (12 turns, 0 errors, 0 chars).
+#   2. n=8 -> n=16 (ids 51-66) for a noise-robust RACE number (n=8 SE ~0.05; the V1 gap is
+#      within noise at n=8). Hold everything else constant: budget 200, cap 6, report-style contract.
+# Est Serper: ~13 search-calls/item (measured on B) x 16 ~= 210 credits (200/tree cap bounds worst case).
+#SBATCH --job-name=structured_report_n16
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=06:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/structured_report_n16_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/structured_report_n16_%j.err
+set -euo pipefail
+
+mkdir -p /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs
+cd /gpfs/home5/lgehringer/Dr-RLM/dr-rlm/agent
+
+export ARMS=structured
+export DR_RLM_CAPTURE_LEDGER=1
+export MODEL=gemini-2.5-flash
+export MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export MODEL_API_KEY_ENV=GEMINI_API_KEY
+export TOKENIZER=Qwen/Qwen3-8B
+export BENCH=deep_research_bench
+export NUMEX=16                 # ids 51-66
+export MAX_DEPTH=1
+export SEARCH_BACKEND=web
+export MAX_TOOL_CALLS=200
+export MAX_CHILDREN=6
+export GRADE=1
+export SAVE_TRAJ=1
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/structured_report_n16
+
+echo "[job ${SLURM_JOB_ID:-local}] $(hostname) structured report-style + answer-state nudge, n=16"
+exec ./ab_child_return.sh

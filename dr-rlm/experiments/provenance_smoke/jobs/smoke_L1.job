@@ -1,0 +1,80 @@
+#!/bin/bash
+# =============================================================================
+# SMOKE L1 — paired control: SAME everything, broadcast credit (stock SkyRL).
+#
+# Identical warm start / data / corpus / judge / steps as smoke_L3.job; only the
+# credit scheme differs (per_node_credit=false + reward_mode=inherited = flatten
+# tree, score root, broadcast the scalar). Comparison of telemetry slopes
+# (orphan fraction, cites/child) against L3 is the smoke evidence (NOTES.md).
+# =============================================================================
+#SBATCH --job-name=smoke_L1
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=4
+#SBATCH --cpus-per-task=64
+#SBATCH --time=10:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/smoke_L1_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/smoke_L1_%j.err
+set -euo pipefail
+
+DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
+SKYRL=$DRRLM/rl/skyrl
+OUT=$DRRLM/runs/provenance_smoke
+mkdir -p "$OUT"
+export PATH="$HOME/.local/bin:$PATH"
+set +x; source "$DRRLM/keys.sh"; set -x
+# Ray workers do not inherit the shell env NOR see relative paths into dr-rlm/ (the
+# working dir is repackaged to scratch): give prompts.py the ABSOLUTE canonical prompt.
+export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt.txt
+
+# H100: the env has no DeepGEMM build; vLLM on Hopper tries it by default and the
+# engine dies at startup (RuntimeError: DeepGEMM backend is not available). Disable it.
+export VLLM_USE_DEEP_GEMM=0
+
+# Model cache is complete & verified: force pure-local HF resolution (eliminates the
+# transient hub-404 / lock-file failure class seen in job 23673282). uv cache lives on
+# scratch to keep home INODE quota healthy (146k-file cache blew the 1M soft limit).
+export HF_HUB_OFFLINE=1
+export UV_CACHE_DIR=/scratch-shared/lgehringer/uv_cache
+
+# W&B tracking: skyrl asserts on WANDB_API_KEY (and forwards it to Ray workers);
+# derive it from the existing `wandb login` credential in ~/.netrc.
+export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticators('api.wandb.ai')[2])")
+
+export JUDGE_API_KEY="$GEMINI_API_KEY"
+export JUDGE_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+export JUDGE_MODEL="gemini-2.5-flash"
+
+export DATA_DIR=$DRRLM/data/poc_corpus
+export MODEL_PATH="Qwen/Qwen3.5-4B"
+export SEARCH_BACKEND=local_jsonl
+export SEARCH_CORPUS_PATH=$DATA_DIR/corpus.jsonl
+export NUM_ENGINES=1 TP_SIZE=4 TRAIN_GPUS=4
+export LOGGER=console
+
+export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_L1.jsonl"
+
+cd "$SKYRL"
+bash examples/train/dr_rlm/configs/run_dr_rlm_L1.sh \
+  generator.max_recursion_depth=1 \
+  generator.max_children_per_node=4 \
+  generator.child_return_mode=structured \
+  generator.max_turns=10 \
+  generator.n_samples_per_prompt=4 \
+  generator.chat_template_kwargs.enable_thinking=false \
+  generator.sampling_params.max_generate_length=4096 \
+  generator.eval_sampling_params.max_generate_length=4096 \
+  trainer.policy.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
+  trainer.ref.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
+  trainer.epochs=5 \
+  trainer.eval_before_train=false \
+  trainer.eval_interval=1000 \
+  trainer.ckpt_interval=0 \
+  trainer.micro_forward_batch_size_per_gpu=1 \
+  trainer.micro_train_batch_size_per_gpu=1 \
+  trainer.logger="['console','wandb']" \
+  trainer.run_name="smoke_L1_broadcast" \
+  trainer.log_path="$OUT/L1_logs" \
+  trainer.ckpt_path="$OUT/L1_ckpts" \
+  trainer.export_path="$OUT/L1_exports"
+
+echo "[smoke_L1] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"

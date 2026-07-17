@@ -1,0 +1,79 @@
+% ============================================================================
+% HEADLINE FIGURE (PLACEHOLDER) -- "training improves the raw outputs".
+% Same prompt (instance 27: "conditions for life on Earth"), first vs. last
+% rollout of the v1-clean provenance-smoke RL run. Faithful to the logged tree:
+%   BEFORE: 3/4 sub-agents ORPHAN (surfaced evidence, cited none); root ungrounded; R=0.62
+%   AFTER : 0/4 orphan (every sub-agent cites its own retrieved evidence);
+%           root grounds its synthesis (6 cited claims); R=0.88
+% Numbers from docs/paper_assets/headline_example.json
+% (analysis/training_delta_examples.py --headline 27).
+%
+% >>> PLACEHOLDER: regenerate from the FINAL SFT+RL checkpoint before submission. <<<
+%
+% Drop into the thesis with \input{sections/fig-training-delta}. Assumes
+% \usepackage{tikz} (loaded) and \usetikzlibrary{arrows.meta}. The \definecolor
+% lines are harmless no-ops if the palette (cI/cII/cIII/cBad) already exists, so the
+% file also previews standalone:
+%   \documentclass[border=6pt]{standalone}
+%   \usepackage{tikz}\usetikzlibrary{arrows.meta}
+%   \begin{document}\input{fig-training-delta}\end{document}   % then drop the figure* wrapper
+% ============================================================================
+\definecolor{cI}{HTML}{1F6FB2}    % root / RLM      (blue)
+\definecolor{cII}{HTML}{1B8A6B}   % grounded agent  (green)
+\definecolor{cIII}{HTML}{C97A12}  % provenance      (orange)
+\definecolor{cBad}{HTML}{B03A2E}  % orphan          (red)
+
+\begin{figure*}[t]
+\centering
+\resizebox{0.94\textwidth}{!}{%
+\begin{tikzpicture}[font=\small,>=Latex,
+  ag/.style={circle,draw,minimum size=0.62cm,inner sep=0,font=\scriptsize,line width=0.9pt},
+  good/.style={ag,draw=cII,fill=cII!12,text=cII},
+  bad/.style={ag,draw=cBad,fill=cBad!8,text=cBad,densely dashed},
+  rootn/.style={ag,draw=cI,fill=cI!12,text=cI,line width=1pt},
+  egood/.style={draw=cII,fill=cII!22,text=cII!75!black,rounded corners=1pt,minimum width=0.5cm,minimum height=0.30cm,inner sep=0,font=\tiny},
+  ebad/.style={draw=cBad,fill=cBad!6,text=cBad,densely dashed,rounded corners=1pt,minimum width=0.5cm,minimum height=0.30cm,inner sep=0,font=\tiny},
+  rep/.style={draw,rounded corners=2pt,line width=0.8pt,align=left,font=\scriptsize,inner sep=3pt,draw=cI!60,fill=cI!6,text=cI!72!black,text width=2.55cm},
+  deleg/.style={-{Latex[length=4pt]},line width=0.9pt,black!45},
+  ttl/.style={font=\footnotesize\bfseries},
+  note/.style={font=\scriptsize,text=black!60,align=center},
+  lbl/.style={font=\tiny,text=black!55}]
+
+% =========================== BEFORE panel ===========================
+\node[ttl,text=black!75] at (2.8,3.05){\textsf{BEFORE} \,\textnormal{\small(start of training)}};
+\node[rootn]                       (rB) at (2.80,2.05){$\pi$};
+\node[rep]                       (repB) at (5.15,2.05){\textbf{Root report}\\0 cited claims\\$R=0.62$};
+\draw[deleg,cI!70] (rB.east)--(repB.west);
+\node[bad]  (b0) at (0.85,0){$a_1$};  \node[ebad] at (0.85,-0.80){0};      \node[lbl,text=cBad!85!black] at (0.85,-1.16){orphan};
+\node[bad]  (b1) at (2.15,0){$a_2$};  \node[ebad] at (2.15,-0.80){0};      \node[lbl,text=cBad!85!black] at (2.15,-1.16){orphan};
+\node[bad]  (b2) at (3.45,0){$a_3$};  \node[ebad] at (3.45,-0.80){0};      \node[lbl,text=cBad!85!black] at (3.45,-1.16){orphan};
+\node[good] (b3) at (4.75,0){$a_4$};  \node[egood] at (4.75,-0.80){2\,\checkmark}; \node[lbl] at (4.75,-1.16){grounded};
+\foreach \c in {0,1,2,3}{\draw[deleg] (rB.south)--(b\c.north);}
+\node[note,text width=6.2cm] at (3.45,-1.80){\textbf{3 / 4} sub-agents orphan~\textemdash{} surface evidence,\\ cite none; root synthesis ungrounded};
+
+% =========================== AFTER panel ============================
+\begin{scope}[xshift=9.4cm]
+\node[ttl,text=black!75] at (2.8,3.05){\textsf{AFTER} \,\textnormal{\small(end of training)}};
+\node[rootn]                       (rA) at (2.80,2.05){$\pi$};
+\node[rep]                       (repA) at (5.15,2.05){\textbf{Root report}\\6 cited claims\\$R=0.88$};
+\draw[deleg,cII!70] (rA.east)--(repA.west);
+\node[good] (a0) at (0.85,0){$a_1$};  \node[egood] at (0.85,-0.80){1\,\checkmark}; \node[lbl] at (0.85,-1.16){grounded};
+\node[good] (a1) at (2.15,0){$a_2$};  \node[egood] at (2.15,-0.80){1\,\checkmark}; \node[lbl] at (2.15,-1.16){grounded};
+\node[good] (a2) at (3.45,0){$a_3$};  \node[egood] at (3.45,-0.80){3\,\checkmark}; \node[lbl] at (3.45,-1.16){grounded};
+\node[good] (a3) at (4.75,0){$a_4$};  \node[egood] at (4.75,-0.80){3\,\checkmark}; \node[lbl] at (4.75,-1.16){grounded};
+\foreach \c in {0,1,2,3}{\draw[deleg,cII!70] (rA.south)--(a\c.north);}
+\node[note,text width=6.2cm] at (3.45,-1.80){\textbf{0 / 4} orphan~\textemdash{} every sub-agent cites its\\ own retrieved evidence; root grounds synthesis};
+\end{scope}
+
+% separator
+\draw[black!18,line width=0.6pt] (8.55,-2.15)--(8.55,3.25);
+
+\end{tikzpicture}}
+\caption{\textbf{Training teaches Dr-RLM to ground its retrieval (placeholder, v1-clean smoke run).}
+Same prompt, first vs.\ last rollout. Each sub-agent $a_i$ carries an evidence tag: an
+\textcolor{cBad}{orphan} surfaces evidence but cites none of it; a \textcolor{cII}{grounded}
+agent cites its own retrieved snippets (count shown). Provenance credit drives sub-agents from
+orphan to grounded ($3/4\!\rightarrow\!0/4$) while report quality holds
+($R\,{=}\,0.62\!\rightarrow\!0.88$). \textit{Final version uses the SFT$+$RL checkpoint.}}
+\label{fig:training-delta}
+\end{figure*}

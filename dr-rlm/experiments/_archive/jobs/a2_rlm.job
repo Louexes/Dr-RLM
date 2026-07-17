@@ -1,0 +1,30 @@
+#!/bin/bash
+#SBATCH --job-name=w1_a2_gpt5mini
+#SBATCH --partition=genoa
+#SBATCH --cpus-per-task=32
+#SBATCH --mem=64G
+#SBATCH --time=12:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2_gpt5mini_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/logs/a2_gpt5mini_%j.err
+
+# ============================================================================
+# W1 / Arm A2 (FULL) : GPT-5-mini in the rlm/ RECURSIVE harness, run DEEP.
+#   49 RQA + 50 DRB (the same subset as A1/A3), same online tools + graders.
+#   CPU partition (genoa). LONG time limit: deep recursion is wall-clock heavy
+#   (a deep tree of gpt-5-mini calls per item, then ~2min/item FACT grading).
+#   The driver resumes by example_id, so a re-submit continues where it left off.
+#
+#   NOTE: generation is currently sequential over items; if too slow, raise
+#   item concurrency (future: --max-concurrent-items) or split RQA/DRB into two jobs.
+# ============================================================================
+set -euo pipefail
+export ARM=A2
+export OUT=/gpfs/home5/lgehringer/Dr-RLM/drrlm/runs/A2
+export MCP_PORT=8030
+export MODEL=gpt-5-mini
+export MAX_DEPTH=${MAX_DEPTH:-5}
+export MAX_ITERS=${MAX_ITERS:-20}
+export MAX_SUBCALLS=${MAX_SUBCALLS:-4}
+export NUMEX=                       # all of the subset (49 / 50)
+export GRADE=1
+bash /gpfs/home5/lgehringer/Dr-RLM/drrlm/agent/run.sh

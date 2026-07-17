@@ -1,0 +1,74 @@
+#!/bin/bash
+# ============================================================================
+# SFT sweep BASELINES on the SAME DRB-24 subset + same grader as the sweep — so the decision
+# table compares apples-to-apples against the two references that matter:
+#   euntrained  = Qwen3.5-4B base (thinkon)            -> the floor
+#   ecanon2ep   = dr_rlm_sft_CANONICAL_2ep_served      -> THE existing init we actually RL'd on
+# No graft needed (base is native multimodal; canonical already served). Runs immediately (no dep).
+# ============================================================================
+#SBATCH --job-name=sftsw_base
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=160G
+#SBATCH --time=02:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sftsw_base_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/sftsw_base_%j.err
+set -euo pipefail
+REPO=/gpfs/home5/lgehringer/Dr-RLM; DRRLM=$REPO/dr-rlm; AGENT=$REPO/dr-tulu/agent
+VENV=/gpfs/home5/lgehringer/venvs/rlm_vllm311_headers
+BASE=/scratch-shared/lgehringer/hf_cache/hub/models--Qwen--Qwen3.5-4B/snapshots/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+CANON=/scratch-shared/lgehringer/ckpts/dr_rlm_sft_CANONICAL_2ep_served
+FROZEN=$DRRLM/data/frozen_corpus; TASK=deep_research_bench; N=24; SHARDS=6; PORT=8022
+JOBID=${SLURM_JOB_ID:-local}
+source "$VENV/bin/activate"
+export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY HF_HOME=/scratch-shared/lgehringer/hf_cache HF_HUB_OFFLINE=1
+export DRB_LOCAL_PATH=$DRRLM/data/subsets/drb_en24.jsonl
+export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt_thinkon.txt
+export DR_RLM_CAPTURE_LEDGER=1
+
+CUR_PID=""; cleanup(){ [ -n "$CUR_PID" ] && kill "$CUR_PID" 2>/dev/null || true; }; trap cleanup EXIT
+serve(){ local model="$1" name="$2" tag="$3"
+  local log="$DRRLM/runs/logs/sftsw_base_vllm_${tag}_${JOBID}.log"
+  echo "[serve:$tag] $model -> $log"
+  vllm serve "$model" --host 0.0.0.0 --port "$PORT" --tensor-parallel-size 1 \
+    --gpu-memory-utilization 0.90 --max-model-len 32768 --max-num-seqs 32 \
+    --default-chat-template-kwargs '{"enable_thinking": true}' --served-model-name "$name" > "$log" 2>&1 &
+  CUR_PID=$!
+  for s in $(seq 1 300); do
+    curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && { echo "[serve:$tag] ready ~$((s*5))s"; return 0; }
+    sleep 5; kill -0 "$CUR_PID" 2>/dev/null || { echo "[FATAL] vllm($tag) died"; tail -40 "$log"; exit 1; }
+  done; echo "[FATAL] vllm($tag) never ready"; exit 1; }
+swap_kill(){ kill "$CUR_PID" 2>/dev/null || true; CUR_PID=""
+  for s in $(seq 1 24); do curl -sf "http://localhost:$PORT/v1/models" >/dev/null 2>&1 && sleep 5 || break; done; }
+
+run_one(){ local model="$1" name="$2" tag="$3"
+  local OUT=$DRRLM/runs/sft_sweep/_baseline/$tag; mkdir -p "$OUT"
+  serve "$model" "$name" "$tag"
+  rm -f "$OUT"/shard_${TASK}_*.jsonl "$OUT/${TASK}.jsonl"
+  local GEN=$DRRLM/agent/generate.py; cd "$AGENT"
+  local COMMON="--driver new --benchmark $TASK --model $name --tokenizer-path Qwen/Qwen3.5-4B \
+    --base-url http://localhost:$PORT/v1 --api-key-env OPENAI_API_KEY \
+    --max-recursion-depth 1 --max-iterations 10 --max-completion-tokens 8192 \
+    --max-tool-calls 80 --max-children 10 --child-return-mode structured \
+    --temperature 1.0 --top-p 1.0 --sampling-top-k -1 --min-p 0.0 --presence-penalty 0.0 \
+    --search-backend bm25s --search-corpus-path $FROZEN/corpus.jsonl --search-index-path $FROZEN/bm25s_index \
+    --abort-after-dead-items 1000 --num-examples $N"
+  local pids=()
+  for i in $(seq 0 $((SHARDS-1))); do
+    python "$GEN" $COMMON --num-shards "$SHARDS" --shard "$i" \
+      --output "$OUT/shard_${TASK}_${i}.jsonl" --save-trajectories "$OUT/traj_${TASK}_${i}" \
+      > "$OUT/shard_${TASK}_${i}.log" 2>&1 < /dev/null & pids+=($!)
+  done
+  local fail=0; for p in "${pids[@]}"; do wait "$p" || fail=$((fail+1)); done
+  cat "$OUT"/shard_${TASK}_*.jsonl > "$OUT/${TASK}.jsonl" 2>/dev/null || true
+  echo "[gen] $tag rows=$(wc -l < "$OUT/${TASK}.jsonl" 2>/dev/null) ($fail fails)"
+  cd "$DRRLM"; python analysis/behavioral_metrics.py --run "$tag:$OUT/${TASK}.jsonl" 2>&1 | tail -18 | tee "$OUT/behavioral.txt" || true
+  swap_kill
+}
+
+echo "################## BASELINE: untrained ##################"
+run_one "$BASE" base_untrained euntrained
+echo "################## BASELINE: 2ep-canonical (RL init) ##################"
+run_one "$CANON" canon2ep ecanon2ep
+echo "[done] baselines in $DRRLM/runs/sft_sweep/_baseline/"

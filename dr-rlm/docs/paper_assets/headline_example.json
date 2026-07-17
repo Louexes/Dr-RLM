@@ -1,0 +1,36 @@
+{
+  "instance_id": "27",
+  "before": {
+    "R": 0.62,
+    "n_children": 4,
+    "orphans": 3,
+    "child_cites": [
+      0,
+      0,
+      0,
+      2
+    ],
+    "root_cite_tags": 0,
+    "root_cite_owners": []
+  },
+  "after": {
+    "R": 0.88,
+    "n_children": 4,
+    "orphans": 0,
+    "child_cites": [
+      1,
+      1,
+      3,
+      3
+    ],
+    "root_cite_tags": 6,
+    "root_cite_owners": [
+      "b5eb73d9-38",
+      "b5eb73d9-21",
+      "b5eb73d9-17",
+      "b5eb73d9-35",
+      "b5eb73d9-15",
+      "b5eb73d9-18"
+    ]
+  }
+}
