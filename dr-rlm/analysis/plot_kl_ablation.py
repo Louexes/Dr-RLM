@@ -9,8 +9,8 @@ marker this ablation specifically calls for).
 
 Usage:
   python analysis/plot_kl_ablation.py \
-      --phase1 runs/provenance_smoke/credit_metrics_rl_full150.jsonl \
-      --phase2 runs/provenance_smoke/credit_metrics_rl_klprobe.jsonl \
+      --phase1 runs/rl_training/credit_metrics_rl_full150.jsonl \
+      --phase2 runs/rl_training/credit_metrics_rl_klprobe.jsonl \
       --out analysis/figures/kl_ablation --window 15
 """
 from __future__ import annotations

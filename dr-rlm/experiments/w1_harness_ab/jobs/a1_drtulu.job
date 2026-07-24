@@ -10,7 +10,7 @@
 
 # ============================================================================
 # W1 / Arm A1 (FULL RUN) : DR-Tulu-8B baseline, FAITHFUL to the paper config.
-#   IDENTICAL to a1_drtulu_smoke.job which passed end-to-end (job 23281114),
+#   IDENTICAL to a1_drtulu_pilot.job which passed end-to-end (job 23281114),
 #   except --num-examples final_run (loader caps to our 49 RQA + 50 DRB subset).
 #
 #   Faithful to dr-tulu/agent/scripts/auto_search.sh + evaluation/README.md:
@@ -23,7 +23,7 @@
 #   the *harness* is identical to the paper, only the retrieval source differs.
 #
 #   Subsets: 49 ResearchQA (stratified) + 50 DRB (English).
-#   Smoke timing was ~46s/item (RQA) and ~74s/item (DRB) at concurrency 20;
+#   pilot timing was ~46s/item (RQA) and ~74s/item (DRB) at concurrency 20;
 #   ~3 batches each -> generation ~10-25 min/bench, graders add ~30-60 min. 6h is ample.
 # ============================================================================
 set -euo pipefail

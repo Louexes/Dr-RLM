@@ -7,7 +7,7 @@
 # Grading is a SEPARATE off-GPU step (eval_drrlm_shortform_grade.job) — GPU nodes
 # have no internet. Trajectories NOT saved (full_traces are embedded in each row;
 # protects the home inode quota). Releases the GPU as soon as gen is done.
-# Smoke (24476627) verified: retrieval alive (100-712 snippets/item), recursion OK;
+# pilot (24476627) verified: retrieval alive (100-712 snippets/item), recursion OK;
 # thinking-ON finalizes ~25% (documented deficit) -> strict baseline, as decided.
 # ============================================================================
 #SBATCH --job-name=drrlm_sf_ton

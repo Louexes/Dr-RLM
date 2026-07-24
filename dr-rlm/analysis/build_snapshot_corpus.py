@@ -7,7 +7,7 @@ Serper quota at rollout scale; the wii corpus is gated). The POC run already ret
 ledgers into a wii-schema corpus (rows ``{id, contents, url}``, what
 ``corpus_search``'s local_jsonl/bm25 backends read). Training rollouts then search the
 snapshot of the same evidence the POC trees grounded on. Deliberate overfit to the 40
-prompts — this corpus exists for the MECHANISM smoke run, not for benchmarking.
+prompts — this corpus exists for the MECHANISM pilot run, not for benchmarking.
 
 Dedup: by (url, normalized-text) — identical snippets surfaced by many nodes/trees
 collapse to one doc. Ids are stable content hashes (``snap-<sha1[:16]>``) so rebuilds

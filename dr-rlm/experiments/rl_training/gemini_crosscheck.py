@@ -9,13 +9,13 @@ import json, os, re, time
 from openai import OpenAI
 
 # same instance_ids the local diagnostic scored, split by tag
-diag = [json.loads(l) for l in open("runs/provenance_smoke/judge_rescore_diag.jsonl")]
+diag = [json.loads(l) for l in open("runs/rl_training/judge_rescore_diag.jsonl")]
 zero_ids = [(d["instance_id"], d["orig_R"]) for d in diag if d["tag"] == "zero"]
 ctrl_ids = [(d["instance_id"], d["orig_R"]) for d in diag if d["tag"] == "ctrl"]
 
 import pandas as pd
 df = pd.read_parquet("data/rl_full_600/train.parquet")
-rows = [json.loads(l) for l in open("runs/provenance_smoke/credit_metrics_rl_full150.jsonl") if l.strip()]
+rows = [json.loads(l) for l in open("runs/rl_training/credit_metrics_rl_full150.jsonl") if l.strip()]
 
 def root(r):
     for n in (r.get("nodes") or []):
@@ -108,7 +108,7 @@ print("\n=== scoring 10 controls with Gemini ===")
 c = score_set(ctrl_ids, False, "ctrl")
 
 import statistics as st
-json.dump({"zero": z, "ctrl": c}, open("runs/provenance_smoke/gemini_crosscheck.json", "w"), indent=1)
+json.dump({"zero": z, "ctrl": c}, open("runs/rl_training/gemini_crosscheck.json", "w"), indent=1)
 print("\n===== CROSS-CHECK SUMMARY =====")
 print(f"local judge zeroed these (mean local_R = 0.00 by construction)")
 print(f"GEMINI on same reports: mean {st.mean(o['gemini_R'] for o in z):.3f} | now >0: {sum(o['gemini_R']>0 for o in z)}/{len(z)} | >0.3: {sum(o['gemini_R']>0.3 for o in z)}/{len(z)}")

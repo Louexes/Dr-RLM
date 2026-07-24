@@ -4,7 +4,7 @@
 # Qwen3.6-27B (TP=2, thinking-ON, 131k ctx) drives OUR recursive REPL harness over the
 # frozen bm25s corpus on the 200 frozen manifest prompts; local Qwen3.5-4B judge
 # (thinking-OFF, alias gpt-4.1-mini) scores rubric coverage for rejection sampling.
-# Stages: [0] serve teacher+judge  [1] GATE: serialization smoke (2 prompts)
+# Stages: [0] serve teacher+judge  [1] GATE: serialization check (2 prompts)
 #         [2] rubric drafting (200 prompts, DR-Tulu F.2-style, local)
 #         [3] 8-shard gen_recursive_sft (n_samples=2, threshold=0.6, root+child rows)
 #         [4] merge + filter (cite/recursion/<=32k-tok student-tokenizer, DROP not truncate)
@@ -59,16 +59,16 @@ GENCOMMON="--model $TEACHER --base_url http://localhost:$TPORT/v1 \
   --judge_model $JUDGE --judge_base_url http://localhost:$JPORT/v1 --judge_api_key_env JUDGE_API_KEY \
   --search_backend bm25s --search_corpus_path $FROZEN/corpus.jsonl --search_index_path $FROZEN/bm25s_index"
 
-# --- STAGE 1 (GATE): serialization smoke, 2 prompts, keep-all ---
+# --- STAGE 1 (GATE): serialization check, 2 prompts, keep-all ---
 cd "$DRRLM/rl/skyrl"
-echo "[smoke] gen_recursive_sft on 2 prompts (threshold 0) ..."
+echo "[pilot] gen_recursive_sft on 2 prompts (threshold 0) ..."
 env -u VIRTUAL_ENV $SKYPY examples/train/dr_rlm/sft/gen_recursive_sft.py \
-  --prompts "$DRRLM/data/subsets/sft_probe_smoke3.jsonl" --out_jsonl "$OUT/smoke_sharegpt.jsonl" \
-  --limit 2 --threshold 0.0 $GENCOMMON > "$OUT/smoke.log" 2>&1 \
-  || { echo "[FATAL] serialization smoke failed:"; tail -25 "$OUT/smoke.log"; exit 1; }
-SMOKE_ROWS=$(wc -l < "$OUT/smoke_sharegpt.jsonl")
-[ "$SMOKE_ROWS" -ge 1 ] || { echo "[FATAL] smoke exit 0 but produced 0 rows (silent failure — see smoke.log):"; tail -25 "$OUT/smoke.log"; exit 1; }
-echo "[smoke] OK: $SMOKE_ROWS rows (root+child)"
+  --prompts "$DRRLM/data/subsets/sft_probe_pilot3.jsonl" --out_jsonl "$OUT/pilot_sharegpt.jsonl" \
+  --limit 2 --threshold 0.0 $GENCOMMON > "$OUT/pilot.log" 2>&1 \
+  || { echo "[FATAL] serialization check failed:"; tail -25 "$OUT/pilot.log"; exit 1; }
+PROBE_ROWS=$(wc -l < "$OUT/pilot_sharegpt.jsonl")
+[ "$PROBE_ROWS" -ge 1 ] || { echo "[FATAL] pilot exit 0 but produced 0 rows (silent failure — see pilot.log):"; tail -25 "$OUT/pilot.log"; exit 1; }
+echo "[pilot] OK: $PROBE_ROWS rows (root+child)"
 
 # --- STAGE 2: rubric drafting (200 prompts, local, ~30 min) ---
 echo "[rubrics] drafting via $TEACHER ..."

@@ -5,7 +5,7 @@
 # Qwen3.6-27B (TP=2, thinking-ON, 131k ctx) drives OUR recursive REPL harness over the
 # frozen bm25s corpus on the 200 frozen manifest prompts; local Qwen3.5-4B judge
 # (thinking-OFF, alias gpt-4.1-mini) scores rubric coverage for rejection sampling.
-# Stages: [0] serve teacher+judge  [1] GATE: serialization smoke (2 prompts)
+# Stages: [0] serve teacher+judge  [1] GATE: serialization check (2 prompts)
 #         [2] rubric drafting (200 prompts, DR-Tulu F.2-style, local)
 #         [3] 8-shard gen_recursive_sft (n_samples=2, threshold=0.6, root+child rows)
 #         [4] merge + filter (cite/recursion/<=32k-tok student-tokenizer, DROP not truncate)
@@ -60,7 +60,7 @@ GENCOMMON="--model $TEACHER --base_url http://localhost:$TPORT/v1 \
   --judge_model $JUDGE --judge_base_url http://localhost:$JPORT/v1 --judge_api_key_env JUDGE_API_KEY \
   --search_backend bm25s --search_corpus_path $FROZEN/corpus.jsonl --search_index_path $FROZEN/bm25s_index"
 
-# (pass 2: smoke + rubric stages skipped — pipeline validated, rubrics reused)
+# (pass 2: pilot + rubric stages skipped — pipeline validated, rubrics reused)
 cd "$DRRLM/rl/skyrl"
 
 # --- STAGE 3: 8-shard generation with inline rejection sampling ---

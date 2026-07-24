@@ -11,7 +11,7 @@
 # W1 / Arm A3 (FULL) : GPT-5-mini FLAT, in the DR-Tulu agent harness.
 #   CPU partition (genoa) — NO GPU needed (commercial API + MCP only).
 #   MUST be a SLURM job: the full run is ~2h (FACT grading is serial ~2min/item),
-#   which the login node reaps. Smokes survived only because they were minutes.
+#   which the login node reaps. pilots survived only because they were minutes.
 #
 #   Same harness as A1 (online MCP serper/jina, browse on, max_tool_calls=10,
 #   --use-cache, 49 RQA + 50 DRB, same graders). Differences from A1:

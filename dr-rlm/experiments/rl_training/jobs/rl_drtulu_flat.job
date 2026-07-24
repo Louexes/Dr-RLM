@@ -4,7 +4,7 @@
 # Faithful Open-Instruct recipe on SkyRL (docs/DRTULU_RL_FAITHFULNESS_AUDIT.md), matched
 # to the recursive main arm rl_be68 for cross-arm parity:
 #   * init  = dr_tulu_flat_sft_lowlr/served_e13  (the CORRECT low-LR SFT init; gate cov 0.295,
-#             entropy 89% STABLE) -- NOT the old 4e-5 CANONICAL_1ep the smoke used.
+#             entropy 89% STABLE) -- NOT the old 4e-5 CANONICAL_1ep the pilot used.
 #   * data  = data/rl_flat300_drtulu (first 300 of rl_fresh_400_drtulu = IDENTICAL prompts to
 #             recursive rl_be68_300; 300 prompts x batch4 x epochs1 = 75 steps).
 #   * reward= flat composite 0.5 rubric + 0.2 citation + 0.2 format + 0.1 search (run_dr_tulu_flat.sh).
@@ -50,7 +50,7 @@ export UV_CACHE_DIR=/scratch-shared/lgehringer/uv_cache
 export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticators('api.wandb.ai')[2])")
 
 # ---- local judge rendezvous (own endpoint file; judge_server_flat.job) ----
-JUDGE_ENDPOINT_FILE=$DRRLM/runs/provenance_smoke/rl_judge_flat_endpoint.txt
+JUDGE_ENDPOINT_FILE=$DRRLM/runs/rl_training/rl_judge_flat_endpoint.txt
 echo "[rl_drtulu_flat] waiting for local judge endpoint (max 60 min) ..."
 JUDGE_UP=0
 for s in $(seq 1 360); do
@@ -91,7 +91,7 @@ export RUN_NAME=rl_drtulu_flat
 export LOG_PATH=$OUT/rl_drtulu_flat_logs
 export CKPT_PATH EXPORT_PATH
 export NUM_ENGINES=1 TP_SIZE=4 TRAIN_GPUS=4
-export DR_RLM_CREDIT_METRICS_PATH="$DRRLM/runs/provenance_smoke/credit_metrics_rl_drtulu_flat.jsonl"
+export DR_RLM_CREDIT_METRICS_PATH="$DRRLM/runs/rl_training/credit_metrics_rl_drtulu_flat.jsonl"
 export DR_RLM_JUDGE_OUTAGE_GUARD=0.9
 
 # ---- launch: flat composite reward, GRPO, KL 0.05 (run_dr_tulu_flat.sh holds the recipe) ----

@@ -1,14 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# PHASE 0b — RL INIT-HEALTH, max_generate_length=8192 (2026-07-05).
-# 4096 (phase0, job 24456073) risked truncating the thinking-ON root synthesis -> empty-root
-# finalization failures (rootF% fell 50->31% over 3 steps). 8192 matches SFT/eval budget = clean read.
+# PHASE 1 — RL from 2ep SFT, TRAIN/EVAL-CONSISTENT HARNESS (2026-07-05).
+# CONSISTENCY FIX (user 2026-07-05): the RL harness MUST match the eval/SFT harness (same principle
+# we locked for the untrained-eval baselines). Phase 0/0b rolled on poc_corpus/local_jsonl — but the
+# SFT init learned on frozen_corpus/bm25s and ALL evals use it, so poc was a distribution mismatch
+# (likely feeding the finalization failures). Now aligned to eval: search_backend=bm25s +
+# frozen_corpus + bm25s_index, max_children=10, max_generate_length=8192 (all = eval COMMON).
+# Prompts = drtulu_rl_decompose40 (the rl-split train set, held out from SFT+eval). Reward rubric-only
+# (grounding-aware = follow-up), epochs=3 (~24 steps, each of 32 prompts seen 3x, fits 8h) = the real trifecta test + ckpt@4.
 #
 # Goal: settle EMPIRICALLY whether the 2ep SFT ckpt is a good RL init (vs untrained), per the
 # 3 guardrails: (1) step-0 rollout finalize/empty-rate + mean reward, (2) policy entropy stays
 # off the floor (SFT-init entropy is load-bearing under kl_loss anchor), (3) KL-to-init bounded.
 # ONLY changes vs the locked config: init=2ep SFT (grafted), thinking-ON (matches SFT + validated
-# by smoke_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
+# by pilot_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
 # poc_corpus kept = the fully-calibrated plumbing, lowest infra risk. If healthy -> Phase 1 promotes
 # to frozen_corpus + rl-split prompts + grounding-aware reward for the real thesis checkpoint.
 #
@@ -30,18 +35,18 @@
 # Infra: checkpointing ON (Run A had ckpt_interval=0 and OOM'd unrecoverably at step 20);
 # judge-outage guard; fresh-quota single-run-per-day. Chunkable like v1-clean.
 # =============================================================================
-#SBATCH --job-name=rl_sft2ep_p0b
+#SBATCH --job-name=rl_sft2ep_p1
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=08:00:00
-#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_sft2ep_p0b_%j.out
-#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_sft2ep_p0b_%j.err
+#SBATCH --time=12:00:00
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_sft2ep_p1_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_sft2ep_p1_%j.err
 set -euo pipefail
 
 DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
 SKYRL=$DRRLM/rl/skyrl
-OUT=$DRRLM/runs/provenance_smoke
+OUT=$DRRLM/runs/rl_training
 mkdir -p "$OUT"
 export PATH="$HOME/.local/bin:$PATH"
 set +x; source "$DRRLM/keys.sh"; set -x
@@ -63,13 +68,14 @@ export JUDGE_MODEL="gemini-2.5-flash"
 # ---- data / corpus / policy ----
 export DATA_DIR=$DRRLM/data/poc_corpus
 export MODEL_PATH="/scratch-shared/lgehringer/ckpts/dr_rlm_sft_CANONICAL_2ep_served"   # 2ep SFT init (grafted, servable)
-export SEARCH_BACKEND=local_jsonl
-export SEARCH_CORPUS_PATH=$DATA_DIR/corpus.jsonl
+export SEARCH_BACKEND=bm25s
+export SEARCH_CORPUS_PATH=$DRRLM/data/frozen_corpus/corpus.jsonl
+export SEARCH_INDEX_PATH=$DRRLM/data/frozen_corpus/bm25s_index
 export NUM_ENGINES=1 TP_SIZE=4 TRAIN_GPUS=4
 export LOGGER=console
 
 # ---- evidence telemetry + judge-outage guard ----
-export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_rl_sft2ep_phase0b.jsonl"
+export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_rl_sft2ep_phase1.jsonl"
 export DR_RLM_JUDGE_OUTAGE_GUARD=0.9
 
 # ---- GROUNDING-AWARE REWARD (root R = rubric + citation) ----
@@ -93,7 +99,7 @@ bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
   trainer.algorithm.advantage_estimator=rer_pernode \
   generator.judge_max_concurrency=5 \
   generator.max_recursion_depth=1 \
-  generator.max_children_per_node=4 \
+  generator.max_children_per_node=10 \
   generator.child_return_mode=structured \
   generator.max_turns=10 \
   generator.n_samples_per_prompt=4 \
@@ -102,7 +108,7 @@ bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
   generator.eval_sampling_params.max_generate_length=8192 \
   trainer.policy.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
   trainer.ref.fsdp_config.wrap_policy.transformer_layer_cls_to_wrap="['Qwen3_5DecoderLayer']" \
-  trainer.epochs=1 \
+  trainer.epochs=3 \
   trainer.eval_before_train=false \
   trainer.eval_interval=1000 \
   trainer.ckpt_interval=4 \
@@ -110,12 +116,12 @@ bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
   trainer.micro_forward_batch_size_per_gpu=1 \
   trainer.micro_train_batch_size_per_gpu=1 \
   trainer.logger="['console','wandb']" \
-  trainer.run_name="rl_sft2ep_phase0b" \
-  trainer.log_path="$OUT/rl_sft2ep_phase0b_logs" \
-  trainer.ckpt_path="/scratch-shared/lgehringer/rl_sft2ep_phase0b_ckpts" \
-  trainer.export_path="$OUT/rl_sft2ep_phase0b_exports"
+  trainer.run_name="rl_sft2ep_phase1" \
+  trainer.log_path="$OUT/rl_sft2ep_phase1_logs" \
+  trainer.ckpt_path="/scratch-shared/lgehringer/rl_sft2ep_phase1_ckpts" \
+  trainer.export_path="$OUT/rl_sft2ep_phase1_exports"
 
-echo "[rl_sft2ep_phase0b] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"
+echo "[rl_sft2ep_phase1] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"
 # SUCCESS GATE: orphans drop like v1-clean (child citing held) AND R(alive) rises above
 # v1-clean's flat ~0.75. If orphans flatten -> separation still failing (check the
 # DrRlmTrainer node_depth warning in the log). If R flat -> root signal too weak (raise

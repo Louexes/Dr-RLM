@@ -2,10 +2,10 @@
 # ============================================================================
 # BASELINE eval — untrained Qwen3.5-4B, flat vs recursive, dual-judge.
 #
-# Generation config ALIGNED with the gradable RL smoke (smoke_L3_complete.job ->
+# Generation config ALIGNED with the gradable RL pilot (pilot_L3_complete.job ->
 # run_dr_rlm_L3.sh): enable_thinking=false, temperature=1.0, max_generate_length=1024,
 # max_turns=10, max_children_per_node=4, child_return_mode=STRUCTURED, recursion depth=1.
-# (The earlier smoke broke recursion by using prose/depth2/6-turns — NOT what RL ran.)
+# (The earlier pilot broke recursion by using prose/depth2/6-turns — NOT what RL ran.)
 #
 # Two graders on the SAME reports to validate the judge:
 #   * Qwen3.5-4B  (local vLLM, aliased to the researchqa grader name)

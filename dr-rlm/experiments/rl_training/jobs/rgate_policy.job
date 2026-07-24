@@ -11,7 +11,7 @@
 # Writes: telemetry jsonl (one line per rollout: nodes, depths, cites) ->
 #         recursion rate = frac(trees with >1 node). Judge = gemini-2.5-flash
 #         (same judge as the validated POC) so report rewards are also sane.
-# GATE:   recursion rate >= ~0.3 -> proceed to smoke_L3/L1 as-is;
+# GATE:   recursion rate >= ~0.3 -> proceed to pilot_L3/L1 as-is;
 #         ~0 -> light SFT on the POC trees first (sft/gen_recursive_sft.py).
 # =============================================================================
 #SBATCH --job-name=rgate_qwen35
@@ -26,7 +26,7 @@ set -euo pipefail
 DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
 SKYRL=$DRRLM/rl/skyrl
 DATA_DIR=$DRRLM/data/poc_corpus
-OUT=$DRRLM/runs/provenance_smoke
+OUT=$DRRLM/runs/rl_training
 mkdir -p "$OUT"
 export PATH="$HOME/.local/bin:$PATH"
 set +x; source "$DRRLM/keys.sh"; set -x
@@ -110,7 +110,7 @@ uv run --extra fsdp --python 3.12 -m examples.train.dr_rlm.main_dr_rlm_eval \
 # ---- gate summary from telemetry ----
 python3 - <<'EOF'
 import json
-rows=[json.loads(l) for l in open("/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/provenance_smoke/rgate_telemetry.jsonl")]
+rows=[json.loads(l) for l in open("/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/rl_training/rgate_telemetry.jsonl")]
 nodes=[n for r in rows for n in (r.get("nodes") or [])]
 roots=[n for n in nodes if n.get("depth",0)==0]; kids=[n for n in nodes if n.get("depth",0)>0]
 print(f"[GATE] roots={len(roots)} children={len(kids)} children_per_root={len(kids)/max(len(roots),1):.2f} "

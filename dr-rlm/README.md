@@ -14,7 +14,7 @@ folder (`rl/skyrl/`, `sft/llama-factory/`).
 | `prompts/` | The canonical inference system prompt (`system_prompt.txt`), depth-banded, shared with the RL env (`rl/skyrl/…/dr_rlm/prompts.py`). |
 | `data/subsets/` | Frozen benchmark subsets (+ provenance in `data/README.md`). |
 | `corpus_build/` | The frozen-corpus pipeline (discover → fetch → normalize → index → audit → freeze). |
-| `experiments/` | One self-contained dir of launch jobs per experiment (`provenance_smoke/jobs/` holds the RL runs). |
+| `experiments/` | One self-contained dir of launch jobs per experiment (`rl_training/jobs/` holds the RL runs). |
 | `analysis/` | Analysis scripts (behavioral metrics, training curves, ablation figures) + generated figures. |
 | `results/` | Curated result tables. |
 | `runs/` | Heavy eval outputs + SLURM logs (gitignored). |

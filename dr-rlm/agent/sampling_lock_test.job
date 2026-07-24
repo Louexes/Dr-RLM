@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
 # LOCK the untrained-DR-RLM eval sampling + turn budget. Reverted harness (no auto-echo, 1:1 w/ RL).
-# Same 12 ResearchQA items, temp 1.0 / top_p 1.0 (= eval_smoke = RL ROLLOUT sampling; extras as no-ops:
+# Same 12 ResearchQA items, temp 1.0 / top_p 1.0 (= eval_pilot = RL ROLLOUT sampling; extras as no-ops:
 # top_k -1, min_p 0, presence_penalty 0). Two arms vary ONLY the turn cap:
 #   A) 6 turns   (RL max_turns — does temp 1.0 alone recover the empties vs recommended-bundle 25%?)
 #   B) 12 turns  (more room — does it recover more of the untrained ~50% single-sample floor?)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# SLURM job — OFFLINE harness smoke: 2 DRB items over the snapshot corpus (zero Serper/Jina).
+# SLURM job — OFFLINE harness pilot: 2 DRB items over the snapshot corpus (zero Serper/Jina).
 # Validates the offline iteration loop Louis asked for: search() -> local_jsonl over
 # data/offline_corpus/healthbench.jsonl (harvested from our own saved run ledgers), citations,
 # child contracts, trajectories — everything but live retrieval. Only Gemini tokens spent.
@@ -32,5 +32,5 @@ export CITATION_VERIFY=1
 export HEALTHBENCH_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/healthbench_hard_repr.jsonl
 export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_hb_check
 
-echo "[job ${SLURM_JOB_ID:-local}] offline smoke: HealthBench n=7 mechanics check, adopted config"
+echo "[job ${SLURM_JOB_ID:-local}] offline pilot: HealthBench n=7 mechanics check, adopted config"
 exec ./ab_child_return.sh

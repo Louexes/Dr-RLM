@@ -13,7 +13,7 @@
 # 3 guardrails: (1) step-0 rollout finalize/empty-rate + mean reward, (2) policy entropy stays
 # off the floor (SFT-init entropy is load-bearing under kl_loss anchor), (3) KL-to-init bounded.
 # ONLY changes vs the locked config: init=2ep SFT (grafted), thinking-ON (matches SFT + validated
-# by smoke_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
+# by pilot_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
 # poc_corpus kept = the fully-calibrated plumbing, lowest infra risk. If healthy -> Phase 1 promotes
 # to frozen_corpus + rl-split prompts + grounding-aware reward for the real thesis checkpoint.
 #
@@ -46,7 +46,7 @@ set -euo pipefail
 
 DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
 SKYRL=$DRRLM/rl/skyrl
-OUT=$DRRLM/runs/provenance_smoke
+OUT=$DRRLM/runs/rl_training
 mkdir -p "$OUT"
 export PATH="$HOME/.local/bin:$PATH"
 set +x; source "$DRRLM/keys.sh"; set -x

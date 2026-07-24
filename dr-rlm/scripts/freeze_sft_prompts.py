@@ -7,8 +7,8 @@ by dr-tulu's own construction). Verifies disjointness against the 40-prompt RL t
 set and the locked eval subsets anyway, then writes:
 
   data/subsets/sft_prompts_manifest.json   (the frozen manifest, eval_locked style)
-  data/subsets/sft_probe_smoke3.jsonl      (3 rows, SkyRL dr_rlm schema, for the
-                                            gen_recursive_sft.py serialization smoke)
+  data/subsets/sft_probe_pilot3.jsonl      (3 rows, SkyRL dr_rlm schema, for the
+                                            gen_recursive_sft.py serialization check)
 
 Deterministic: seed 42 over the qid-sorted pool.
 """
@@ -25,7 +25,7 @@ QUESTIONS = DRRLM / "data/frozen_corpus/questions.jsonl"
 RL40 = DRRLM / "data/subsets/drtulu_rl_decompose40.jsonl"
 EVAL_MANIFEST = DRRLM / "data/subsets/eval_locked_manifest.json"
 OUT_MANIFEST = DRRLM / "data/subsets/sft_prompts_manifest.json"
-OUT_SMOKE = DRRLM / "data/subsets/sft_probe_smoke3.jsonl"
+OUT_PROBE = DRRLM / "data/subsets/sft_probe_pilot3.jsonl"
 
 SEED, N = 42, 200
 
@@ -100,7 +100,7 @@ def main() -> None:
     }
     OUT_MANIFEST.write_text(json.dumps(manifest, indent=2, ensure_ascii=False))
 
-    with OUT_SMOKE.open("w") as f:
+    with OUT_PROBE.open("w") as f:
         for p in picked[:3]:
             f.write(json.dumps({
                 "prompt": [{"role": "user", "content": p["question"]}],
@@ -112,7 +112,7 @@ def main() -> None:
 
     print(f"pool={len(pool)} dropped_collisions={dropped} picked={len(picked)}")
     print(f"wrote {OUT_MANIFEST}")
-    print(f"wrote {OUT_SMOKE}")
+    print(f"wrote {OUT_PROBE}")
 
 
 if __name__ == "__main__":

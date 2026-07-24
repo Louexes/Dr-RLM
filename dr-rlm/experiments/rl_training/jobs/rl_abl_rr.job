@@ -2,7 +2,7 @@
 # =============================================================================
 # ROOT-RESIDUAL ablation (conservation): root earns only its conserved credit share of R
 # (original L3 scheme) instead of full R. Prediction: children unchanged (same shares),
-# root synthesis/finalization degrades + anti-delegation incentive (2026-06-12 smoke).
+# root synthesis/finalization degrades + anti-delegation incentive (2026-06-12 pilot).
 # Byte-identical to rl_fresh100.job except this ONE flag + 30-step data (rl_abl_120,
 # prefix of the main run's prompts). Same 2ep-SFT init, KL 0.05, judge, harness.
 # Inherited config below (from rl_full150.job):
@@ -19,7 +19,7 @@
 # 3 guardrails: (1) step-0 rollout finalize/empty-rate + mean reward, (2) policy entropy stays
 # off the floor (SFT-init entropy is load-bearing under kl_loss anchor), (3) KL-to-init bounded.
 # ONLY changes vs the locked config: init=2ep SFT (grafted), thinking-ON (matches SFT + validated
-# by smoke_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
+# by pilot_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
 # poc_corpus kept = the fully-calibrated plumbing, lowest infra risk. If healthy -> Phase 1 promotes
 # to frozen_corpus + rl-split prompts + grounding-aware reward for the real thesis checkpoint.
 #
@@ -63,7 +63,7 @@ if [ "$DONE_STEP" -ge 30 ]; then
   done
   exit 0
 fi
-OUT=$DRRLM/runs/provenance_smoke
+OUT=$DRRLM/runs/rl_training
 mkdir -p "$OUT"
 export PATH="$HOME/.local/bin:$PATH"
 set +x; source "$DRRLM/keys.sh"; set -x
@@ -81,7 +81,7 @@ export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticato
 # Qwen3.5-4B thinking-OFF served by judge_server.job on its own GPU; rendezvous via endpoint file.
 # Same judge model as eval => train≡eval consistency now covers the reward model too.
 # NB: reward-function delta vs the 24-step trifecta run (which was Gemini-scored) — logged.
-JUDGE_ENDPOINT_FILE=$DRRLM/runs/provenance_smoke/rl_judge_rr_endpoint.txt
+JUDGE_ENDPOINT_FILE=$DRRLM/runs/rl_training/rl_judge_rr_endpoint.txt
 echo "[rl_abl_rr] waiting for local judge endpoint (max 60 min) ..."
 JUDGE_UP=0
 for s in $(seq 1 360); do

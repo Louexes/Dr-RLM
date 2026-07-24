@@ -9,7 +9,7 @@
 # Config mirrors the locked eval harness (depth=1, turns=10, children=10, structured,
 # bm25s frozen corpus), THINKING-ON, but temperature 0.7 = gen_recursive_sft's default
 # (this probe approximates Step-1 teacher generation, not the locked eval).
-# PHASE 2 (non-gating): gen_recursive_sft.py serialization smoke on 2 manifest prompts.
+# PHASE 2 (non-gating): gen_recursive_sft.py serialization check on 2 manifest prompts.
 # ============================================================================
 #SBATCH --job-name=sft_teacher_probe
 #SBATCH --partition=gpu_h100
@@ -93,18 +93,18 @@ PY
 python "$DRRLM/analysis/behavioral_metrics.py" --run "qwen36_27b_probe:$OUT/${TASK}.jsonl" \
   --outdir "$OUT" --stem teacher_probe_metrics || true
 
-# --- PHASE 2 (non-gating): gen_recursive_sft.py serialization smoke, 2 prompts ---
-echo; echo "=== serialization smoke (gen_recursive_sft.py, threshold 0, judge absent) ==="
+# --- PHASE 2 (non-gating): gen_recursive_sft.py serialization check, 2 prompts ---
+echo; echo "=== serialization check (gen_recursive_sft.py, threshold 0, judge absent) ==="
 cd "$DRRLM/rl/skyrl"
 python examples/train/dr_rlm/sft/gen_recursive_sft.py \
-  --prompts "$DRRLM/data/subsets/sft_probe_smoke3.jsonl" \
-  --out_jsonl "$OUT/smoke_sharegpt.jsonl" \
+  --prompts "$DRRLM/data/subsets/sft_probe_pilot3.jsonl" \
+  --out_jsonl "$OUT/pilot_sharegpt.jsonl" \
   --limit 2 --n_samples 1 --threshold 0.0 --max_depth 2 \
   --model "$ALIAS" --base_url "http://localhost:$PORT/v1" \
   --search_backend bm25s --search_corpus_path "$FROZEN/corpus.jsonl" \
   --search_index_path "$FROZEN/bm25s_index" \
-  > "$OUT/smoke.log" 2>&1 \
-  && echo "smoke OK: $(wc -l < "$OUT/smoke_sharegpt.jsonl") sharegpt rows" \
-  || { echo "smoke FAILED (non-gating) — tail of log:"; tail -20 "$OUT/smoke.log"; }
+  > "$OUT/pilot.log" 2>&1 \
+  && echo "pilot OK: $(wc -l < "$OUT/pilot_sharegpt.jsonl") sharegpt rows" \
+  || { echo "pilot FAILED (non-gating) — tail of log:"; tail -20 "$OUT/pilot.log"; }
 
 echo "[probe] complete."

@@ -20,7 +20,7 @@ Metric definitions (per step):
 
 Usage:
   python analysis/plot_training_curves.py \
-      --metrics runs/provenance_smoke/credit_metrics_rl_fresh100.jsonl \
+      --metrics runs/rl_training/credit_metrics_rl_fresh100.jsonl \
       --logs runs/logs/rl_fresh100_24502441.err runs/logs/rl_fresh100_24502443.err \
              runs/logs/rl_fresh100_24502445.err \
       --out analysis/figures/rl_fresh100 --window 15

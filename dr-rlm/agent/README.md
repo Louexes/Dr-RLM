@@ -18,7 +18,7 @@ Two drivers, selected by `--driver`:
 - **`run.sh`** — runner. Reads env (MODEL, MAX_DEPTH, ORCHESTRATOR, TOOL_BUDGET_SCOPE, MAX_TOOL_CALLS,
   BENCH, NUM_SHARDS, GRADE, OUT, *_LOCAL_PATH); launches the MCP backend (Serper+Jina); shards generation;
   runs graders. Anchors: `REPO=/gpfs/home5/lgehringer/Dr-RLM`, `DRRLM=$REPO/drrlm`.
-- **`a3_gpt5mini.sh`, `a3_smoke.sh`** — A3 (flat DR-Tulu ReAct) helpers.
+- **`a3_gpt5mini.sh`, `a3_pilot.sh`** — A3 (flat DR-Tulu ReAct) helpers.
 
 The full prompt the model sees = `prompts/system_prompt.txt` (system) + the `_user_prologue` (user, in
 `generate.py`) + runtime metadata/turn messages. See `../prompts/README.md`.

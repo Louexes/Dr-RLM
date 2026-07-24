@@ -563,7 +563,7 @@ def main():
     ap.add_argument("--log-dir", default=None,
                     help="if set, write a per-item full trajectory JSONL (root + nested sub-agents: "
                          "every iteration's model response, repl code, stdout, locals, child calls) here")
-    # ---- per-item runaway guards (the smoke had a 4.4M-token / 62-min item) ----
+    # ---- per-item runaway guards (a pilot run had a 4.4M-token / 62-min item) ----
     ap.add_argument("--item-timeout", type=float, default=900.0, help="per-item wall-clock cap (s); rlm max_timeout, propagated to children")
     ap.add_argument("--max-tool-calls", type=int, default=80, help="search+browse budget; scope set by --tool-budget-scope; further calls return a 'finalize now' message")
     ap.add_argument("--tool-budget-scope", choices=["tree", "node"], default="tree",

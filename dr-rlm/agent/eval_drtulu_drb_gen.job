@@ -5,7 +5,7 @@
 # same venv, same thinking-ON serve, same bm25s frozen-corpus bridge.
 #
 # GRADING IS DELIBERATELY OMITTED: DRB uses Gemini graders (RACE gemini-2.5-pro,
-# FACT gemini-2.5-flash) and a 4-GPU RL smoke is currently burning the shared
+# FACT gemini-2.5-flash) and a 4-GPU RL pilot is currently burning the shared
 # free-tier Gemini quota. This job banks the reports JSONL only; grade later in a
 # SEPARATE Gemini pass (exact command in the delivery report / handoff below).
 #

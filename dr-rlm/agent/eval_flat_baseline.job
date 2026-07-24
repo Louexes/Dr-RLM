@@ -60,10 +60,10 @@ PATHVALS=("$DRRLM/data/subsets/researchqa_strat120.jsonl" \
 GRADE=(qwen               defer               qwen                     defer)
 
 B=${BENCHES[$i]}; N=${NUMS[$i]}; PVAR=${PATHVARS[$i]}; PVAL=${PATHVALS[$i]}; G=${GRADE[$i]}
-# SMOKE=1: tiny N + eager serve to validate every benchmark's load->generate(->grade) path cheaply
+# PROBE=1: tiny N + eager serve to validate every benchmark's load->generate(->grade) path cheaply
 # in the EXACT job before the multi-hour full run. Same code, just N=2.
 EAGER=""
-if [[ "${SMOKE:-0}" == "1" ]]; then N=2; EAGER="--enforce-eager"; OUT="$OUT/smoke"; mkdir -p "$OUT"; echo "[SMOKE] N=2 + eager serve -> $OUT"; fi
+if [[ "${PROBE:-0}" == "1" ]]; then N=2; EAGER="--enforce-eager"; OUT="$OUT/pilot"; mkdir -p "$OUT"; echo "[PROBE] N=2 + eager serve -> $OUT"; fi
 echo "[task $i] benchmark=$B  N=$N  grade=$G  data=$PVAL"
 
 source "$VENV/bin/activate"

@@ -1,14 +1,10 @@
 #!/bin/bash
 # =============================================================================
-# FRESH 100-STEP RUN @ KL 0.05 (2026-07-08) — THE thesis training run, relaunched clean.
-# Supersedes rl_full150 (KL 0.01, contracted synthesis by step 53) after the KL probe
-# (24482019) PASSED its gate: contraction reversed, E[R] best-of-training, trifecta held.
-# Deltas vs rl_full150.job: kl_loss_coef=0.05; FRESH from 2ep-SFT init (NO resume — new empty
-# ckpt dir); data = rl_fresh_400 (first 400 of the seed-42 600; 100 steps x batch 4, zero
-# repetition; SAME subset for the DR-Tulu flat arm = identical-prompts fairness contract).
-# Recipe otherwise UNCHANGED: ledger_support + full_R + rer_pernode + depthW=0 + rubric-only +
-# local thinking-OFF judge + consistent harness. Chain: self-resuming 10h chunks (~45 steps/chunk
-# at probe pace; 2-3 chunks). Kill criteria: hacking signature, entropy <0.25, KL runaway.
+# CITATION-COUNT ablation (hackability test): child credit by RAW CITATION COUNT instead of
+# support strength. Prediction: gameable — watch for citation-spam signatures (cites/kid up
+# while orphans reappear / support flat). POC already showed false orphans statically.
+# Byte-identical to rl_fresh100.job except this ONE flag + 30-step data (rl_abl_120,
+# prefix of the main run's prompts). Same 2ep-SFT init, KL 0.05, judge, harness.
 # Inherited config below (from rl_full150.job):
 # PHASE 1 — RL from 2ep SFT, TRAIN/EVAL-CONSISTENT HARNESS (2026-07-05).
 # CONSISTENCY FIX (user 2026-07-05): the RL harness MUST match the eval/SFT harness (same principle
@@ -23,7 +19,7 @@
 # 3 guardrails: (1) step-0 rollout finalize/empty-rate + mean reward, (2) policy entropy stays
 # off the floor (SFT-init entropy is load-bearing under kl_loss anchor), (3) KL-to-init bounded.
 # ONLY changes vs the locked config: init=2ep SFT (grafted), thinking-ON (matches SFT + validated
-# by smoke_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
+# by pilot_thinkon_plumbing), rubric-only reward (a2 judge-load fix), epochs=1 (~8 steps, ckpt@4).
 # poc_corpus kept = the fully-calibrated plumbing, lowest infra risk. If healthy -> Phase 1 promotes
 # to frozen_corpus + rl-split prompts + grounding-aware reward for the real thesis checkpoint.
 #
@@ -45,13 +41,13 @@
 # Infra: checkpointing ON (Run A had ckpt_interval=0 and OOM'd unrecoverably at step 20);
 # judge-outage guard; fresh-quota single-run-per-day. Chunkable like v1-clean.
 # =============================================================================
-#SBATCH --job-name=rl_be68
+#SBATCH --job-name=rl_abl_cc
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=10:00:00
-#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_be68_%j.out
-#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_be68_%j.err
+#SBATCH --output=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_abl_cc_%j.out
+#SBATCH --error=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/logs/rl_abl_cc_%j.err
 set -euo pipefail
 
 DRRLM=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm
@@ -59,16 +55,15 @@ SKYRL=$DRRLM/rl/skyrl
 
 # chain guard: epochs=1 over 400 prompts = exactly 100 steps; later chunks in the afterany
 # chain exit immediately once done so they don't burn spin-up + idle judge time.
-TARGET_STEP=75   # 75-step LR horizon (constant -> lossless resume). PHASE 1 stops at 50 via monitor auto-scancel; relaunch resumes 50->75 on prompts 201-300 (zero repeat).
-DONE_STEP=$(cat /scratch-shared/lgehringer/rl_be68_ckpts/latest_ckpt_global_step.txt 2>/dev/null || echo 0)
-if [ "$DONE_STEP" -ge "$TARGET_STEP" ]; then
-  echo "[rl_be68] already at step $DONE_STEP >= $TARGET_STEP — cancelling leftover chain jobs"
-  for j in $(squeue -h -u lgehringer -n rl_be68,rl_judge -o %i); do
+DONE_STEP=$(cat /scratch-shared/lgehringer/rl_abl_cc_ckpts/latest_ckpt_global_step.txt 2>/dev/null || echo 0)
+if [ "$DONE_STEP" -ge 30 ]; then
+  echo "[rl_abl_cc] already at step $DONE_STEP >= 30 — cancelling leftover chain jobs"
+  for j in $(squeue -h -u lgehringer -n rl_abl_cc,rl_judge_cc -o %i); do
     [ "$j" != "${SLURM_JOB_ID:-}" ] && scancel "$j" || true
   done
   exit 0
 fi
-OUT=$DRRLM/runs/provenance_smoke
+OUT=$DRRLM/runs/rl_training
 mkdir -p "$OUT"
 export PATH="$HOME/.local/bin:$PATH"
 set +x; source "$DRRLM/keys.sh"; set -x
@@ -86,8 +81,8 @@ export WANDB_API_KEY=$(python3 -c "import netrc;print(netrc.netrc().authenticato
 # Qwen3.5-4B thinking-OFF served by judge_server.job on its own GPU; rendezvous via endpoint file.
 # Same judge model as eval => train≡eval consistency now covers the reward model too.
 # NB: reward-function delta vs the 24-step trifecta run (which was Gemini-scored) — logged.
-JUDGE_ENDPOINT_FILE=$DRRLM/runs/provenance_smoke/rl_judge_endpoint.txt
-echo "[rl_be68] waiting for local judge endpoint (max 60 min) ..."
+JUDGE_ENDPOINT_FILE=$DRRLM/runs/rl_training/rl_judge_cc_endpoint.txt
+echo "[rl_abl_cc] waiting for local judge endpoint (max 60 min) ..."
 JUDGE_UP=0
 for s in $(seq 1 360); do
   if [ -f "$JUDGE_ENDPOINT_FILE" ] && curl -sf "$(cat $JUDGE_ENDPOINT_FILE)/models" >/dev/null 2>&1; then JUDGE_UP=1; break; fi
@@ -97,7 +92,7 @@ if [ "$JUDGE_UP" != "1" ]; then echo "[FATAL] local judge never came up ($JUDGE_
 export JUDGE_API_KEY="EMPTY"
 export JUDGE_BASE_URL="$(cat $JUDGE_ENDPOINT_FILE)"
 export JUDGE_MODEL="rl-judge-qwen35-4b"
-echo "[rl_be68] judge ready: $JUDGE_BASE_URL ($JUDGE_MODEL)"
+echo "[rl_abl_cc] judge ready: $JUDGE_BASE_URL ($JUDGE_MODEL)"
 
 # Pre-flight: the local judge must return a PARSEABLE, sane rubric score before we spend
 # spin-up + training. A judge that can't emit the expected format makes every R silently 0.0
@@ -119,8 +114,8 @@ print("[judge-preflight] OK — local judge parses and discriminates")
 PYEOF
 
 # ---- data / corpus / policy ----
-export DATA_DIR=$DRRLM/data/rl_be68_300   # 300 prompts = 75-step horizon; constant across phases so resume is clean. Monitor halts phase 1 at step 50.
-export MODEL_PATH="/scratch-shared/lgehringer/ckpts/sft_recipe_sweep/B_lowlr/hf/global_step_68/served"   # NEW SFT init = B_lowlr e68 (lr2e-5, DRB 0.321 > untr/oldRL, entropy 69%)
+export DATA_DIR=$DRRLM/data/rl_abl_120   # first 120 of rl_fresh_400 = 30 steps x batch 4 (ablation length)
+export MODEL_PATH="/scratch-shared/lgehringer/ckpts/dr_rlm_sft_CANONICAL_2ep_served"   # 2ep SFT init (grafted, servable)
 export SEARCH_BACKEND=bm25s
 export SEARCH_CORPUS_PATH=$DRRLM/data/frozen_corpus/corpus.jsonl
 export SEARCH_INDEX_PATH=$DRRLM/data/frozen_corpus/bm25s_index
@@ -128,7 +123,7 @@ export NUM_ENGINES=1 TP_SIZE=4 TRAIN_GPUS=4
 export LOGGER=console
 
 # ---- evidence telemetry + judge-outage guard ----
-export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_rl_be68.jsonl"
+export DR_RLM_CREDIT_METRICS_PATH="$OUT/credit_metrics_rl_abl_cc.jsonl"
 export DR_RLM_JUDGE_OUTAGE_GUARD=0.9
 
 # ---- GROUNDING-AWARE REWARD (root R = rubric + citation) ----
@@ -147,7 +142,7 @@ export DR_RLM_DEPTH_WEIGHTING=0
 
 cd "$SKYRL"
 bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
-  generator.share_mode=ledger_support \
+  generator.share_mode=citation_count \
   generator.root_reward_mode=full_R \
   trainer.algorithm.advantage_estimator=rer_pernode \
   trainer.algorithm.kl_loss_coef=0.05 \
@@ -171,12 +166,12 @@ bash examples/train/dr_rlm/configs/run_dr_rlm_L3.sh \
   trainer.micro_forward_batch_size_per_gpu=1 \
   trainer.micro_train_batch_size_per_gpu=1 \
   trainer.logger="['console','wandb']" \
-  trainer.run_name="rl_be68" \
-  trainer.log_path="$OUT/rl_be68_logs" \
-  trainer.ckpt_path="/scratch-shared/lgehringer/rl_be68_ckpts" \
-  trainer.export_path="/scratch-shared/lgehringer/rl_be68_exports"
+  trainer.run_name="rl_abl_cc" \
+  trainer.log_path="$OUT/rl_abl_cc_logs" \
+  trainer.ckpt_path="/scratch-shared/lgehringer/rl_abl_cc_ckpts" \
+  trainer.export_path="/scratch-shared/lgehringer/rl_abl_cc_exports"
 
-echo "[rl_be68] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"
+echo "[rl_abl_cc] done -> telemetry $DR_RLM_CREDIT_METRICS_PATH"
 # SUCCESS GATE: orphans drop like v1-clean (child citing held) AND R(alive) rises above
 # v1-clean's flat ~0.75. If orphans flatten -> separation still failing (check the
 # DrRlmTrainer node_depth warning in the log). If R flat -> root signal too weak (raise

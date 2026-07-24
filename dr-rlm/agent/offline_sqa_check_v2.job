@@ -1,5 +1,5 @@
 #!/bin/bash
-# SLURM job — OFFLINE harness smoke: 2 DRB items over the snapshot corpus (zero Serper/Jina).
+# SLURM job — OFFLINE harness pilot: 2 DRB items over the snapshot corpus (zero Serper/Jina).
 # Validates the offline iteration loop Louis asked for: search() -> local_jsonl over
 # data/offline_corpus/sqav2.jsonl (harvested from our own saved run ledgers), citations,
 # child contracts, trajectories — everything but live retrieval. Only Gemini tokens spent.
@@ -32,5 +32,5 @@ export CITATION_VERIFY=1
 export SQAV2_LOCAL_PATH=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/data/subsets/sqav2_cs100.jsonl
 export OUT=/gpfs/home5/lgehringer/Dr-RLM/dr-rlm/runs/offline_sqa_check_v2
 
-echo "[job ${SLURM_JOB_ID:-local}] offline smoke: sqav2 n=8 adopted-config check"
+echo "[job ${SLURM_JOB_ID:-local}] offline pilot: sqav2 n=8 adopted-config check"
 exec ./ab_child_return.sh

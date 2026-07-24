@@ -14,8 +14,8 @@
 #   tools         bm25s search (snippet_search + google_search) + bm25s browse(get_doc parity)
 #   corpus/judge  frozen_corpus + Qwen3.5-4B judge (graded separately)
 #
-# DEFAULT = 2-item SMOKE (confirms loader honors the locked subset + full pipeline).
-# Bump SMOKE_N / set FULL=1 only when launching the real run.
+# DEFAULT = 2-item PROBE (confirms loader honors the locked subset + full pipeline).
+# Bump PROBE_N / set FULL=1 only when launching the real run.
 # ============================================================================
 #SBATCH --job-name=drtulu_untr
 #SBATCH --partition=gpu_h100
@@ -35,8 +35,8 @@ PORT=8001                      # avoid clashing with any MCP default on 8000
 FROZEN=$DRRLM/data/frozen_corpus
 OUT=$DRRLM/runs/drtulu_untrained
 TASK=researchqa
-SMOKE_N=12                     # preview size; FULL=1 (default now) -> whole locked subset
-FULL="${FULL:-1}"             # smoke already passed (job 24313711, 11/12 non-empty) -> default to the full run
+PROBE_N=12                     # preview size; FULL=1 (default now) -> whole locked subset
+FULL="${FULL:-1}"             # pilot already passed (job 24313711, 11/12 non-empty) -> default to the full run
 GRADER_ALIAS=gpt-4.1-mini-2025-04-14   # researchqa grader's hardcoded judge name -> alias served Qwen to it
 mkdir -p "$OUT" "$DRRLM/runs/logs"
 source "$VENV/bin/activate"
@@ -59,7 +59,7 @@ for s in $(seq 1 180); do
 done
 
 # --- run the ReAct harness over the frozen corpus -------------------------------
-NUMEX="${SMOKE_N}"; [ "$FULL" = "1" ] && NUMEX="$(wc -l < "$RESEARCHQA_LOCAL_PATH")"   # explicit count (avoid untested 'final_run' string)
+NUMEX="${PROBE_N}"; [ "$FULL" = "1" ] && NUMEX="$(wc -l < "$RESEARCHQA_LOCAL_PATH")"   # explicit count (avoid untested 'final_run' string)
 OVERRIDES="search_tool_name=bm25s,browse_tool_name=bm25s"
 OVERRIDES="$OVERRIDES,bm25s_index_path=$FROZEN/bm25s_index,bm25s_corpus_path=$FROZEN/corpus.jsonl"
 OVERRIDES="$OVERRIDES,search_agent_base_url=http://localhost:$PORT/v1"

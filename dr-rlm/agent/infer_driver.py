@@ -573,7 +573,7 @@ async def _amain(args) -> None:
                 # SILENT ROOT DEATH retry: a provider blip burst at the root's last turn can
                 # outlast even the 6-attempt generation backoff, ending the rollout with an
                 # empty report and NO root env-metrics row (observed twice on 2026-06-12:
-                # checktool smoke id=51, checktool_v3 id=66 — children fine, root vanished,
+                # checktool pilot id=51, checktool_v3 id=66 — children fine, root vanished,
                 # driver printed OK). One fresh re-run of the whole item recovers it; a
                 # second empty result is accepted as a real (model) failure and recorded.
                 if not (res.get("final_response") or "").strip() and not _get_hard_error().get("hit"):

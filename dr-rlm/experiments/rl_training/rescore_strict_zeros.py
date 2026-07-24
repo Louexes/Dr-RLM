@@ -20,7 +20,7 @@ SYS = (
     'answer.  Output JSON in the format: {"score": x}.'
 )
 
-rows = [json.loads(l) for l in open("runs/provenance_smoke/credit_metrics_rl_full150.jsonl") if l.strip()]
+rows = [json.loads(l) for l in open("runs/rl_training/credit_metrics_rl_full150.jsonl") if l.strip()]
 df = pd.read_parquet("data/rl_full_600/train.parquet")
 
 def root(r):
@@ -82,7 +82,7 @@ async def main():
                         "ans_len": rt["ans_len"], "criteria": crits})
             print(f"[{tag}] iid={iid} orig={out[-1]['orig_R']:.2f} rescored={out[-1]['rescored_R']:.2f} "
                   f"parse_fail={out[-1]['n_parse_fail']}/{len(crits)}")
-    with open("runs/provenance_smoke/judge_rescore_diag.jsonl", "w") as f:
+    with open("runs/rl_training/judge_rescore_diag.jsonl", "w") as f:
         for o in out:
             f.write(json.dumps(o) + "\n")
     z = [o for o in out if o["tag"] == "zero"]
