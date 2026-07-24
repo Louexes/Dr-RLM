@@ -14,7 +14,7 @@ smaller cold-start set over-narrows sooner.
 All numbers are measured sweep scalars (seed-42), verbatim from:
   runs/sft_sweep/B_lowlr/e*/race/.../race_result.txt   (recursive DRB-24 RACE)
   runs/sft_sweep/.../behavioral.txt                     (recursion %)
-  docs/EXPERIMENT_LOG.md 2026-07-11 (recursive) and 2026-07-12 (flat)
+  the SFT epoch-selection sweeps (recursive and flat arms)
 
 Run:  uv run --with matplotlib python analysis/plot_sft_epoch_selection.py
 Out:  ../thesis_obsidian/thesis_final/figures/fig-sft-epoch-selection.{pdf,png}

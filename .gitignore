@@ -1,4 +1,4 @@
-# ── Vendored-dependency junk (deps themselves are committed; our patches: dr-rlm/docs/patches_to_deps.md)
+# ── Vendored-dependency junk (the dependencies themselves are committed)
 /HALO/
 .git-vendor/
 wandb/

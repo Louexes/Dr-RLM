@@ -2,7 +2,7 @@
 # ============================================================================
 # Grade DR-Tulu long-form HB + DRB OFF-GPU (staging = internet, ~0 SBU), Gemini.
 # Config-aligned with every existing anchor (all HB/DRB grading is Gemini per
-# docs/EVAL_GRADING_REQUIREMENTS.md + EXPERIMENT_LOG rows 118/135/169):
+# (HealthBench grades off-GPU via Gemini flash; ResearchQA/DRB use the local judge):
 #   HB   = evaluate.py healthbench --grader-model gemini-2.5-flash
 #   DRB  = deep_research_bench_eval/run_eval.py  (RACE gemini-2.5-pro, FACT gemini-2.5-flash)
 # SQA is graded separately by eval_sqa_grade.job (astabench/uv). Pass OUT + TAG.

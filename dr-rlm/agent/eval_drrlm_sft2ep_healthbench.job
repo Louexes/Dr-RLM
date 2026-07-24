@@ -94,4 +94,4 @@ PY
 # --- GEN-ONLY: bank reports; grade OFF-GPU via Gemini flash (local judge retry-storms; untrained HB was Gemini-graded) ---
 echo; echo "[done] HB reports BANKED (NOT graded here — Gemini flash off-GPU): $OUT/${TASK}.jsonl"
 echo "       grade later (interactive internet node): source $DRRLM/keys.sh"
-echo "       see docs/EVAL_GRADING_REQUIREMENTS.md for the HB Gemini-flash command (untrained anchor 0.114)."
+echo "       grade HealthBench off-GPU with the Gemini-flash grader."

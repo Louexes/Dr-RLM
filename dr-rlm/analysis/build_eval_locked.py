@@ -1,6 +1,6 @@
 """Build the LOCKED thesis eval subsets (N=120 each) for ResearchQA + HealthBench-hard.
 
-Design (see EXPERIMENT_LOG 2026-06-28):
+Design:
   * N=120 per benchmark — minimal-but-significant: with per-item coverage SD~0.21, gives a
     95% CI half-width of +-0.038 per arm and detects a paired arm-vs-arm delta ~0.05 at 80%
     power (W1 deltas were ~0.15). DRB(50 en, full) + SQAv2(100, full) need no resampling.

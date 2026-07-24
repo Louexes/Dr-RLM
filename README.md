@@ -20,33 +20,30 @@ academic budgets.
   sub-agents, tree-global provenance ledger, strict finalization) implemented on SkyRL
   (`dr-rlm/rl/skyrl/examples/train/dr_rlm/`, `dr-rlm/rl/skyrl/skyrl-gym/skyrl_gym/envs/rlm/`).
 - **Provenance credit**: per-node credit from ledger support, validated against a
-  leave-one-child-out counterfactual (`dr-rlm/docs/PROVENANCE_VALIDATION_SUMMARY.md`).
+  leave-one-child-out counterfactual.
 - **A matched flat baseline**: a faithful DR-Tulu-style ReAct arm with its own SFT and RL
-  environment (`dr_tulu_env.py`; audit in `dr-rlm/docs/DRTULU_RL_FAITHFULNESS_AUDIT.md`).
+  environment (`dr_tulu_env.py`).
 - **The frozen corpus pipeline**: 139k-document web corpus + BM25 index, self-crawled with a
-  free, ungated stack (`dr-rlm/corpus_build/`, `dr-rlm/docs/CORPUS_CONSTRUCTION.md`).
+  free, ungated stack (`dr-rlm/corpus_build/`).
 - **The evaluation harness**: one inference driver for both substrates over seven benchmarks,
   plus analysis scripts and generated figures (`dr-rlm/agent/`, `dr-rlm/analysis/`).
 
 ## Repository layout
 
-| Path | What | Ours? |
-|---|---|---|
-| `dr-rlm/agent/` | Inference + eval driver for both substrates; SLURM jobs for every experiment | ✅ |
-| `dr-rlm/rl/skyrl/examples/train/dr_rlm/` | Training package: RER reward, provenance credit, judge, corpus tools, entry points `main_dr_rlm.py` / `main_dr_rlm_eval.py` / `main_dr_tulu.py` | ✅ |
-| `dr-rlm/rl/skyrl/skyrl-gym/skyrl_gym/envs/rlm/` | Recursive REPL environment | ✅ |
-| `dr-rlm/corpus_build/` | Frozen-corpus pipeline (discover, fetch, normalize, index, audit, freeze) | ✅ |
-| `dr-rlm/sft/`, `dr-rlm/scripts/` | SFT data generation and filtering; checkpoint grafting utilities | ✅ |
-| `dr-rlm/analysis/` | Behavioral metrics, training-curve and ablation figures | ✅ |
-| `dr-rlm/results/`, `dr-rlm/docs/` | Curated result tables, paper assets, reproducibility docs (`docs/README.md`) | ✅ |
-| `dr-rlm/prompts/`, `dr-rlm/experiments/` | Canonical system prompt; one directory per experiment | ✅ |
-| `dr-rlm/rl/skyrl/` | SkyRL (RL backbone) | vendored |
-| `dr-tulu/` | DR Tulu (the deep-research baseline we extend) | vendored |
-| `rlm/` | RLM (the original recursive-language-model implementation) | vendored |
-| `dr-rlm/sft/llama-factory/` | LLaMA-Factory (SFT reference; final SFT uses SkyRL's native trainer) | vendored |
-
-Our modifications to the vendored trees are catalogued in
-[`dr-rlm/docs/patches_to_deps.md`](dr-rlm/docs/patches_to_deps.md).
+| Path | What |
+|---|---|
+| `dr-rlm/agent/` | Inference + eval driver for both substrates; SLURM jobs for every experiment |
+| `dr-rlm/rl/skyrl/examples/train/dr_rlm/` | Training package: RER reward, provenance credit, judge, corpus tools, entry points `main_dr_rlm.py` / `main_dr_rlm_eval.py` / `main_dr_tulu.py` |
+| `dr-rlm/rl/skyrl/skyrl-gym/skyrl_gym/envs/rlm/` | Recursive REPL environment |
+| `dr-rlm/corpus_build/` | Frozen-corpus pipeline (discover, fetch, normalize, index, audit, freeze) |
+| `dr-rlm/sft/`, `dr-rlm/scripts/` | SFT data generation and filtering; checkpoint grafting utilities |
+| `dr-rlm/analysis/` | Behavioral metrics, training-curve and ablation figures |
+| `dr-rlm/results/` | Curated result tables and generated paper assets |
+| `dr-rlm/prompts/`, `dr-rlm/experiments/` | Canonical system prompt; one directory per experiment |
+| `dr-rlm/rl/skyrl/` | SkyRL, the RL backbone (vendored) |
+| `dr-tulu/` | DR Tulu, the deep-research baseline we extend (vendored) |
+| `rlm/` | RLM, the original recursive-language-model implementation (vendored) |
+| `dr-rlm/sft/llama-factory/` | LLaMA-Factory, SFT reference; final SFT uses SkyRL's native trainer (vendored) |
 
 ## Setup
 
@@ -59,16 +56,17 @@ cd dr-rlm/rl/skyrl && uv sync
 ```
 
 Models are served with vLLM. The policy is served thinking-on; the judge endpoint must be served
-thinking-off (`--default-chat-template-kwargs '{"enable_thinking": false}'`); see
-`dr-rlm/docs/THINKING_MODE_SETUP.md`. API keys (only needed for live-web crawling and the
-optional Gemini grader) are sourced from a local `keys.sh`, which is not committed.
+thinking-off (`--default-chat-template-kwargs '{"enable_thinking": false}'`). API keys (only
+needed for live-web crawling and the optional Gemini grader) are sourced from a local `keys.sh`,
+which is not committed.
 
 ## Reproducing the pipeline
 
 1. **Frozen corpus (once).** `dr-rlm/corpus_build/` crawls, normalizes, indexes, and freezes the
-   corpus (phases 0-7 in its README). All later stages point at it via `SEARCH_BACKEND=bm25s`.
-   The built corpus is not in the repo; the pipeline regenerates it, or the frozen snapshot is
-   available from the author.
+   corpus (`seeds.py` → `discover.py` → `fetch.py` → `normalize.py` → `index_bm25.py` →
+   `audit.py` → `freeze.py`). All later stages point at it via `SEARCH_BACKEND=bm25s`. The built
+   corpus is not in the repo; the pipeline regenerates it, or the frozen snapshot is available
+   from the author.
 2. **Untrained baselines.** `dr-rlm/agent/generate.py` runs both substrates through the same
    driver: recursive REPL (depth 1, structured child returns, strict finalization) and flat
    ReAct. Eval jobs: `dr-rlm/agent/eval_*.job`; panels: `panel_*.sh`.
@@ -80,9 +78,8 @@ optional Gemini grader) are sourced from a local `keys.sh`, which is not committ
    rubric reward, provenance credit `share_mode=ledger_support`, train harness mirroring the
    eval harness). The credit-rule ablation arms differ only in credit routing; the flat arm
    trains in `dr_tulu_env.py` on the identical prompt set.
-5. **Evaluation and grading.** Generation runs on GPU; grading runs off GPU
-   (`dr-rlm/docs/EVAL_GRADING_REQUIREMENTS.md`). Figures and behavioral metrics are regenerated
-   by the `dr-rlm/analysis/` scripts.
+5. **Evaluation and grading.** Generation runs on GPU; grading runs off GPU. Figures and
+   behavioral metrics are regenerated by the `dr-rlm/analysis/` scripts.
 
 Model checkpoints and raw run outputs are too large for GitHub and are available from the author
 on request.

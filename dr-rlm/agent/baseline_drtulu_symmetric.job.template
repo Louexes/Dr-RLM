@@ -2,7 +2,7 @@
 # TEMPLATE — fair DR-Tulu baseline run with task statements IDENTICAL to DR-RLM's.
 # Fill in: MODEL serving (vllm for DR-Tulu-8B, or an API model via their config), MCP
 # backend port, benchmark + n. Requires the two steelman patches in
-# dr-tulu/agent/workflows/auto_search_sft.py (see dr-rlm/docs/patches_to_deps.md).
+# dr-tulu/agent/workflows/auto_search_sft.py.
 #
 # The framing JSON below MUST be kept in sync with dr-rlm/agent/infer_driver._TASK_FRAMING
 # (post-adoption values: neutral RQA statement; symmetric HB rubric-axis statement; DRB and

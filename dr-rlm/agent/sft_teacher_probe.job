@@ -29,7 +29,7 @@ JOBID=${SLURM_JOB_ID:-local}
 mkdir -p "$OUT" "$DRRLM/runs/logs"; rm -f "$OUT"/shard_*.jsonl "$OUT/${TASK}.jsonl"
 source "$VENV/bin/activate"; export TOKENIZERS_PARALLELISM=false OPENAI_API_KEY=EMPTY
 export VLLM_USE_DEEP_GEMM=0 HF_HUB_OFFLINE=1
-export DR_RLM_CAPTURE_LEDGER=1   # tool_calls/snippet capture (EXPERIMENT_LOG row 136 fix)
+export DR_RLM_CAPTURE_LEDGER=1   # tool_calls/snippet capture
 export SQAV2_LOCAL_PATH=$DRRLM/data/subsets/sqav2_gemini_recprobe12.jsonl
 export DR_RLM_PROMPT_FILE=$DRRLM/prompts/system_prompt_thinkon.txt
 
