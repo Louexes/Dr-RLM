@@ -15,5 +15,3 @@
    (`share_mode=ledger_support`) routing per-node reward along the citation graph.
 3. **Eval:** run the trained model through `../agent/` on the benchmark subsets against the
    matched flat DR-Tulu-style arm (`dr_tulu_env.py`).
-
-`configs/` — RL launch configs (or pointers into `skyrl/examples/train/dr_rlm`).

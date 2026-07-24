@@ -4,7 +4,7 @@
 Reads, for each arm (A1/A2/A3) and benchmark (researchqa/deep_research_bench):
   - generation JSONL   (eval_output/<ARM>/<bench>.jsonl)   -> compute axis
   - grader score files (eval_output/<ARM>/...score.txt / drb_eval/) -> quality axis
-  - timing.json        (eval_output/<ARM>/timing.json, written by the .job) -> latency axis
+  - timing.json        (eval_output/<ARM>/timing.json) -> latency axis
 
 Defensive by design: the generation schema only materialises after a run, so we
 introspect whatever fields exist rather than assume an exact schema. Missing

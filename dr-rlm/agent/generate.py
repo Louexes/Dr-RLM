@@ -29,7 +29,7 @@ Faithfulness notes baked in:
     API never rejects unsupported params.
 
 This is an API-only arm (no GPU). Run it as a SLURM job on the `genoa` CPU partition —
-NEVER a full run on the login node (it gets reaped). See a2_rlm.sh / a2_rlm.job.
+NEVER a full run on the login node (it gets reaped); submit via SLURM.
 """
 
 from __future__ import annotations
@@ -614,11 +614,11 @@ def main():
                          "an oracle returning per-entry SUPPORTED/UNSUPPORTED/UNKNOWN verdicts "
                          "judged against the shared ledger (child-inherited entries included). "
                          "Never filters — the agent acts on the verdicts (drop/re-point/rewrite). "
-                         "Advertise via a prompt variant (prompts/variants/check_tool.txt)")
+                         "Advertise via the system prompt")
     ap.add_argument("--save-trajectories", default=None, metavar="DIR",
                     help="[--driver new] capture each item's full recursion-tree trajectory "
                          "(per-node, per-turn: response/code/stdout + config) as parseable JSONL in DIR; "
-                         "render with agent/viz_trajectory_v2.py")
+                         "for post-hoc trajectory inspection")
     ap.add_argument("--tokenizer-path", default=None,
                     help="[--driver new] HF tokenizer/model id for apply_chat_template (defaults to --model)")
     ap.add_argument("--max-input-length", type=int, default=32768,

@@ -13,7 +13,7 @@
 #   decomposition. Model = gpt-5-mini (same as A3) => A2-vs-A3 isolates the scaffold;
 #   A1 (DR-Tulu-8B) is the trained-8B reference.
 #
-#   Parameterized by env vars (defaults = full run); the .job wrappers set them.
+#   Parameterized by env vars (defaults = full run).
 # ============================================================================
 set -euo pipefail
 

@@ -314,7 +314,7 @@ def _save_trajectory(out: Dict[str, Any], ex: Dict[str, Any], args, traj_dir: st
       line 1..N  : {type:"node", rid, parent_rid, depth, child_index, n_turns, cited_ids,
                     final_answer, trajectory:[{turn, response, code, stdout, stderr, submitted}]}
     Each node's terminal env_metrics row carries its trajectory (env.get_metrics); rlm_metadata
-    gives rid/parent_rid/depth to stitch the tree. Rendered by agent/viz_trajectory_v2.py."""
+    gives rid/parent_rid/depth to stitch the tree."""
     rows = out.get("env_metrics") or []
     nodes: List[Dict[str, Any]] = []
     for r in rows:
